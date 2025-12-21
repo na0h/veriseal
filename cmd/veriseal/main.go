@@ -60,6 +60,7 @@ func runSign(args []string) {
 
 	payloadFile := fs.String("payload-file", "", "payload file path (required for v=1)")
 	payloadType := fs.String("payload-type", "application/octet-stream", "payload type (v=1)")
+	payloadEncoding := fs.String("payload-encoding", "", "payload encoding (v=1): JCS or raw")
 
 	_ = fs.Parse(args)
 
@@ -77,39 +78,44 @@ func runSign(args []string) {
 		fatal(err)
 	}
 
-		// v1 path (payload-hash signing)
-		if *payloadFile == "" {
-			fatal(fmt.Errorf("v=1 requires --payload-file"))
-		}
-		payloadBytes, err := os.ReadFile(*payloadFile)
-		if err != nil {
-			fatal(err)
-		}
+	// v1 path (payload-hash signing)
+	if *payloadFile == "" {
+		fatal(fmt.Errorf("v=1 requires --payload-file"))
+	}
+	if *payloadEncoding == "" {
+		fatal(fmt.Errorf("v=1 requires --payload-encoding (JCS|raw)"))
+	}
+	payloadBytes, err := os.ReadFile(*payloadFile)
+	if err != nil {
+		fatal(err)
+	}
 
-		var env1 core.Envelope
-		if err := json.Unmarshal(input, &env1); err != nil {
-			fatal(err)
-		}
+	var env1 core.Envelope
+	if err := json.Unmarshal(input, &env1); err != nil {
+		fatal(err)
+	}
 
-		// enforce v1 and allow payload_type from flag
-		env1.V = 1
-		if env1.PayloadType == "" {
-			env1.PayloadType = *payloadType
-		}
-		signed, err := core.SignEd25519V1(env1, payloadBytes, priv)
-		if err != nil {
-			fatal(err)
-		}
+	// enforce v1 and allow payload_type from flag
+	env1.V = 1
+	if env1.PayloadType == "" {
+		env1.PayloadType = *payloadType
+	}
+	// payload_encoding is required for v1
+	env1.PayloadEncoding = *payloadEncoding
 
-		out, err := json.Marshal(signed)
-		if err != nil {
-			fatal(err)
-		}
-		if err := writeOutput(*outPath, out); err != nil {
-			fatal(err)
-		}
+	signed, err := core.SignEd25519V1(env1, payloadBytes, priv)
+	if err != nil {
+		fatal(err)
+	}
+
+	out, err := json.Marshal(signed)
+	if err != nil {
+		fatal(err)
+	}
+	if err := writeOutput(*outPath, out); err != nil {
+		fatal(err)
+	}
 }
-
 
 func runVerify(args []string) {
 	fs := flag.NewFlagSet("verify", flag.ExitOnError)
@@ -134,27 +140,26 @@ func runVerify(args []string) {
 		fatal(err)
 	}
 
-		var env1 core.Envelope
-		if err := json.Unmarshal(input, &env1); err != nil {
+	var env1 core.Envelope
+	if err := json.Unmarshal(input, &env1); err != nil {
+		fatal(err)
+	}
+
+	var payloadBytes []byte
+	if *payloadFile != "" {
+		b, err := os.ReadFile(*payloadFile)
+		if err != nil {
 			fatal(err)
 		}
+		payloadBytes = b
+	}
 
-		var payloadBytes []byte
-		if *payloadFile != "" {
-			b, err := os.ReadFile(*payloadFile)
-			if err != nil {
-				fatal(err)
-			}
-			payloadBytes = b
-		}
-
-		if err := core.VerifyEd25519V1(env1, pub, payloadBytes); err != nil {
-			fmt.Fprintln(os.Stderr, "FAIL:", err)
-			os.Exit(2)
-		}
-		fmt.Fprintln(os.Stdout, "OK")
+	if err := core.VerifyEd25519V1(env1, pub, payloadBytes); err != nil {
+		fmt.Fprintln(os.Stderr, "FAIL:", err)
+		os.Exit(2)
+	}
+	fmt.Fprintln(os.Stdout, "OK")
 }
-
 
 func readInput(path string) ([]byte, error) {
 	if path == "" {

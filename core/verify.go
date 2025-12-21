@@ -14,11 +14,36 @@ import (
 const (
 	V1PayloadHashAlgSHA256 = "SHA-256"
 	V1AlgEd25519           = "Ed25519"
+	V1PayloadEncodingJCS   = "JCS"
+	V1PayloadEncodingRaw   = "raw"
 )
 
-// ComputePayloadHashV1 computes base64(SHA-256(payloadBytes)).
-func ComputePayloadHashV1(payload []byte) (string, error) {
-	sum := sha256.Sum256(payload)
+// NormalizePayloadBytesV1 returns the bytes that must be hashed according to payloadEncoding.
+func NormalizePayloadBytesV1(payload []byte, payloadEncoding string) ([]byte, error) {
+	switch payloadEncoding {
+	case "":
+		return nil, errors.New("v1: missing payload_encoding")
+	case V1PayloadEncodingRaw:
+		return payload, nil
+	case V1PayloadEncodingJCS:
+		// payload must be JSON bytes; normalize using JCS-equivalent canonicalization.
+		b, err := canonical.Canonicalize(payload)
+		if err != nil {
+			return nil, errors.New("v1: payload_encoding=JCS but payload is not valid JSON")
+		}
+		return b, nil
+	default:
+		return nil, errors.New("v1: unsupported payload_encoding: " + payloadEncoding)
+	}
+}
+
+// ComputePayloadHashV1 computes base64(SHA-256(normalizedPayloadBytes)).
+func ComputePayloadHashV1(payload []byte, payloadEncoding string) (string, error) {
+	norm, err := NormalizePayloadBytesV1(payload, payloadEncoding)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(norm)
 	return base64.StdEncoding.EncodeToString(sum[:]), nil
 }
 
@@ -37,6 +62,12 @@ func VerifyEd25519V1(env Envelope, pub ed25519.PublicKey, payloadBytes []byte) e
 	if env.Kid == "" {
 		return errors.New("v1: missing kid")
 	}
+	if env.PayloadEncoding == "" {
+		return errors.New("v1: missing payload_encoding")
+	}
+	if env.PayloadEncoding != V1PayloadEncodingJCS && env.PayloadEncoding != V1PayloadEncodingRaw {
+		return errors.New("v1: unsupported payload_encoding: " + env.PayloadEncoding)
+	}
 	if env.PayloadHashAlg == "" {
 		env.PayloadHashAlg = V1PayloadHashAlgSHA256
 	}
@@ -52,7 +83,7 @@ func VerifyEd25519V1(env Envelope, pub ed25519.PublicKey, payloadBytes []byte) e
 
 	// optional payload hash verification
 	if payloadBytes != nil {
-		want, err := ComputePayloadHashV1(payloadBytes)
+		want, err := ComputePayloadHashV1(payloadBytes, env.PayloadEncoding)
 		if err != nil {
 			return err
 		}

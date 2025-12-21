@@ -27,6 +27,12 @@ func SignEd25519V1(env Envelope, payloadBytes []byte, priv ed25519.PrivateKey) (
 	if env.PayloadType == "" {
 		env.PayloadType = "application/octet-stream"
 	}
+	if env.PayloadEncoding == "" {
+		return Envelope{}, errors.New("v1: missing payload_encoding")
+	}
+	if env.PayloadEncoding != V1PayloadEncodingJCS && env.PayloadEncoding != V1PayloadEncodingRaw {
+		return Envelope{}, errors.New("v1: unsupported payload_encoding: " + env.PayloadEncoding)
+	}
 	if env.PayloadHashAlg == "" {
 		env.PayloadHashAlg = V1PayloadHashAlgSHA256
 	}
@@ -34,7 +40,7 @@ func SignEd25519V1(env Envelope, payloadBytes []byte, priv ed25519.PrivateKey) (
 		return Envelope{}, errors.New("v1: unsupported payload_hash_alg: " + env.PayloadHashAlg)
 	}
 
-	h, err := ComputePayloadHashV1(payloadBytes)
+	h, err := ComputePayloadHashV1(payloadBytes, env.PayloadEncoding)
 	if err != nil {
 		return Envelope{}, err
 	}
