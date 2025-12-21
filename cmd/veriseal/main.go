@@ -58,7 +58,6 @@ func runSign(args []string) {
 	inPath := fs.String("input", "", "input file path (default: stdin)")
 	outPath := fs.String("output", "", "output file path (default: stdout)")
 
-	v := fs.Int("v", 0, "envelope version (0=draft, 1=stable payload-hash)")
 	payloadFile := fs.String("payload-file", "", "payload file path (required for v=1)")
 	payloadType := fs.String("payload-type", "application/octet-stream", "payload type (v=1)")
 
@@ -78,7 +77,6 @@ func runSign(args []string) {
 		fatal(err)
 	}
 
-	if *v == 1 {
 		// v1 path (payload-hash signing)
 		if *payloadFile == "" {
 			fatal(fmt.Errorf("v=1 requires --payload-file"))
@@ -88,7 +86,7 @@ func runSign(args []string) {
 			fatal(err)
 		}
 
-		var env1 core.EnvelopeV1
+		var env1 core.Envelope
 		if err := json.Unmarshal(input, &env1); err != nil {
 			fatal(err)
 		}
@@ -110,25 +108,6 @@ func runSign(args []string) {
 		if err := writeOutput(*outPath, out); err != nil {
 			fatal(err)
 		}
-		return
-	}
-
-	// v0/draft path (existing)
-	var env0 core.Envelope
-	if err := json.Unmarshal(input, &env0); err != nil {
-		fatal(err)
-	}
-	signed0, err := core.SignEd25519(env0, priv)
-	if err != nil {
-		fatal(err)
-	}
-	out, err := json.Marshal(signed0)
-	if err != nil {
-		fatal(err)
-	}
-	if err := writeOutput(*outPath, out); err != nil {
-		fatal(err)
-	}
 }
 
 
@@ -137,7 +116,6 @@ func runVerify(args []string) {
 	pubPath := fs.String("pubkey", "", "path to ed25519 public key (base64 or raw 32 bytes)")
 	inPath := fs.String("input", "", "input file path (default: stdin)")
 
-	v := fs.Int("v", 0, "envelope version (0=draft, 1=stable payload-hash)")
 	payloadFile := fs.String("payload-file", "", "payload file path (optional; if set, hash is verified for v=1)")
 
 	_ = fs.Parse(args)
@@ -156,8 +134,7 @@ func runVerify(args []string) {
 		fatal(err)
 	}
 
-	if *v == 1 {
-		var env1 core.EnvelopeV1
+		var env1 core.Envelope
 		if err := json.Unmarshal(input, &env1); err != nil {
 			fatal(err)
 		}
@@ -176,19 +153,6 @@ func runVerify(args []string) {
 			os.Exit(2)
 		}
 		fmt.Fprintln(os.Stdout, "OK")
-		return
-	}
-
-	// v0/draft path (existing)
-	var env0 core.Envelope
-	if err := json.Unmarshal(input, &env0); err != nil {
-		fatal(err)
-	}
-	if err := core.VerifyEd25519(env0, pub); err != nil {
-		fmt.Fprintln(os.Stderr, "FAIL:", err)
-		os.Exit(2)
-	}
-	fmt.Fprintln(os.Stdout, "OK")
 }
 
 

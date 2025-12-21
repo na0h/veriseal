@@ -16,7 +16,7 @@ func TestV1Vector_SignAndVerify(t *testing.T) {
 
 	payload := []byte("hello world") // 生bytes
 
-	env := EnvelopeV1{
+	env := Envelope{
 		V:              1,
 		Alg:            "Ed25519",
 		Kid:            "demo-1",
