@@ -1,0 +1,6 @@
+.local/
+*.key
+*.priv
+*.pub
+*.b64
+out.json
