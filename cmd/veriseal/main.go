@@ -55,12 +55,10 @@ func runCanon(args []string) {
 func runSign(args []string) {
 	fs := flag.NewFlagSet("sign", flag.ExitOnError)
 	privPath := fs.String("privkey", "", "path to ed25519 private key (base64 or raw 64 bytes)")
-	inPath := fs.String("input", "", "input file path (default: stdin)")
-	outPath := fs.String("output", "", "output file path (default: stdout)")
+	inPath := fs.String("input", "", "input file path")
+	outPath := fs.String("output", "", "output file path")
 
-	payloadFile := fs.String("payload-file", "", "payload file path (required for v=1)")
-	payloadType := fs.String("payload-type", "application/octet-stream", "payload type (v=1)")
-	payloadEncoding := fs.String("payload-encoding", "", "payload encoding (v=1): JCS or raw")
+	payloadFile := fs.String("payload-file", "", "payload file path")
 
 	_ = fs.Parse(args)
 
@@ -78,32 +76,20 @@ func runSign(args []string) {
 		fatal(err)
 	}
 
-	// v1 path (payload-hash signing)
 	if *payloadFile == "" {
-		fatal(fmt.Errorf("v=1 requires --payload-file"))
-	}
-	if *payloadEncoding == "" {
-		fatal(fmt.Errorf("v=1 requires --payload-encoding (JCS|raw)"))
+		fatal(fmt.Errorf("requires --payload-file"))
 	}
 	payloadBytes, err := os.ReadFile(*payloadFile)
 	if err != nil {
 		fatal(err)
 	}
 
-	var env1 core.Envelope
-	if err := json.Unmarshal(input, &env1); err != nil {
+	var envelope core.Envelope
+	if err := json.Unmarshal(input, &envelope); err != nil {
 		fatal(err)
 	}
 
-	// enforce v1 and allow payload_type from flag
-	env1.V = 1
-	if env1.PayloadType == "" {
-		env1.PayloadType = *payloadType
-	}
-	// payload_encoding is required for v1
-	env1.PayloadEncoding = *payloadEncoding
-
-	signed, err := core.SignEd25519V1(env1, payloadBytes, priv)
+	signed, err := core.SignEd25519V1(envelope, payloadBytes, priv)
 	if err != nil {
 		fatal(err)
 	}

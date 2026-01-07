@@ -10,43 +10,34 @@ import (
 	"github.com/na0h/veriseal/canonical"
 )
 
-func SignEd25519V1(env Envelope, payloadBytes []byte, priv ed25519.PrivateKey) (Envelope, error) {
+func SignEd25519V1(envelope Envelope, payloadBytes []byte, priv ed25519.PrivateKey) (Envelope, error) {
 
-	if env.V != 1 {
-		return Envelope{}, fmt.Errorf("v1: invalid v=%d (expected 1)", env.V)
+	if envelope.V != 1 {
+		return Envelope{}, fmt.Errorf("v1: invalid v=%d (expected 1)", envelope.V)
 	}
-	if env.Alg == "" {
-		env.Alg = V1AlgEd25519
+	if envelope.Alg != V1AlgEd25519 {
+		return Envelope{}, errors.New("v1: unsupported alg: " + envelope.Alg)
 	}
-	if env.Alg != V1AlgEd25519 {
-		return Envelope{}, errors.New("v1: unsupported alg: " + env.Alg)
-	}
-	if env.Kid == "" {
+	if envelope.Kid == "" {
 		return Envelope{}, errors.New("v1: missing kid")
 	}
-	if env.PayloadType == "" {
-		env.PayloadType = "application/octet-stream"
-	}
-	if env.PayloadEncoding == "" {
+	if envelope.PayloadEncoding == "" {
 		return Envelope{}, errors.New("v1: missing payload_encoding")
 	}
-	if env.PayloadEncoding != V1PayloadEncodingJCS && env.PayloadEncoding != V1PayloadEncodingRaw {
-		return Envelope{}, errors.New("v1: unsupported payload_encoding: " + env.PayloadEncoding)
+	if envelope.PayloadEncoding != V1PayloadEncodingJCS && envelope.PayloadEncoding != V1PayloadEncodingRaw {
+		return Envelope{}, errors.New("v1: unsupported payload_encoding: " + envelope.PayloadEncoding)
 	}
-	if env.PayloadHashAlg == "" {
-		env.PayloadHashAlg = V1PayloadHashAlgSHA256
-	}
-	if env.PayloadHashAlg != V1PayloadHashAlgSHA256 {
-		return Envelope{}, errors.New("v1: unsupported payload_hash_alg: " + env.PayloadHashAlg)
+	if envelope.PayloadHashAlg != V1PayloadHashAlgSHA256 {
+		return Envelope{}, errors.New("v1: unsupported payload_hash_alg: " + envelope.PayloadHashAlg)
 	}
 
-	h, err := ComputePayloadHashV1(payloadBytes, env.PayloadEncoding)
+	h, err := ComputePayloadHashV1(payloadBytes, envelope.PayloadEncoding)
 	if err != nil {
 		return Envelope{}, err
 	}
-	env.PayloadHash = h
+	envelope.PayloadHash = h
 
-	unsigned := env
+	unsigned := envelope
 	unsigned.Sig = ""
 
 	b, err := json.Marshal(unsigned)
@@ -59,6 +50,6 @@ func SignEd25519V1(env Envelope, payloadBytes []byte, priv ed25519.PrivateKey) (
 	}
 
 	sig := ed25519.Sign(priv, msg)
-	env.Sig = base64.StdEncoding.EncodeToString(sig)
-	return env, nil
+	envelope.Sig = base64.StdEncoding.EncodeToString(sig)
+	return envelope, nil
 }

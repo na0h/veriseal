@@ -4,3 +4,4 @@
 *.pub
 *.b64
 out.json
+.DS_Store
