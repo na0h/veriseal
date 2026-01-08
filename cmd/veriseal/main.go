@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/na0h/veriseal/canonical"
+	"github.com/na0h/veriseal/cmd/veriseal/internal"
 	"github.com/na0h/veriseal/core"
 	"github.com/na0h/veriseal/crypto"
 )
@@ -106,9 +107,9 @@ func runSign(args []string) {
 func runVerify(args []string) {
 	fs := flag.NewFlagSet("verify", flag.ExitOnError)
 	pubPath := fs.String("pubkey", "", "path to ed25519 public key (base64 or raw 32 bytes)")
-	inPath := fs.String("input", "", "input file path (default: stdin)")
+	inPath := fs.String("input", "", "input signed file path")
 
-	payloadFile := fs.String("payload-file", "", "payload file path (optional; if set, hash is verified for v=1)")
+	payloadFile := fs.String("payload-file", "", "payload file path")
 
 	_ = fs.Parse(args)
 
@@ -126,8 +127,8 @@ func runVerify(args []string) {
 		fatal(err)
 	}
 
-	var env1 core.Envelope
-	if err := json.Unmarshal(input, &env1); err != nil {
+	var envelope core.Envelope
+	if err := json.Unmarshal(input, &envelope); err != nil {
 		fatal(err)
 	}
 
@@ -140,11 +141,37 @@ func runVerify(args []string) {
 		payloadBytes = b
 	}
 
-	if err := core.VerifyEd25519V1(env1, pub, payloadBytes); err != nil {
-		fmt.Fprintln(os.Stderr, "FAIL:", err)
-		os.Exit(2)
+	var verifiedPayloadHash *bool
+	if payloadBytes != nil {
+		if err := core.VerifyPayloadHash(envelope, payloadBytes); err != nil {
+			fmt.Fprintln(os.Stderr, "FAIL:", err)
+			verifiedPayloadHash = internal.BoolPtr(false)
+		} else {
+			verifiedPayloadHash = internal.BoolPtr(true)
+		}
 	}
-	fmt.Fprintln(os.Stdout, "OK")
+
+	verifiedEd25519 := false
+	if err := core.VerifyEd25519V1(envelope, pub); err != nil {
+		fmt.Fprintln(os.Stderr, "FAIL:", err)
+	} else {
+		verifiedEd25519 = true
+	}
+
+	if verifiedEd25519 {
+		fmt.Fprintln(os.Stdout, "Verify signed: OK")
+	} else {
+		fmt.Fprintln(os.Stdout, "Verify signed: FAILED")
+	}
+
+	switch {
+	case verifiedPayloadHash == nil:
+		fmt.Fprintln(os.Stdout, "Verify payload hash: UNKNOWN")
+	case *verifiedPayloadHash:
+		fmt.Fprintln(os.Stdout, "Verify payload hash: OK")
+	default:
+		fmt.Fprintln(os.Stdout, "Verify payload hash: FAILED")
+	}
 }
 
 func readInput(path string) ([]byte, error) {

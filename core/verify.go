@@ -47,52 +47,48 @@ func ComputePayloadHashV1(payload []byte, payloadEncoding string) (string, error
 	return base64.StdEncoding.EncodeToString(sum[:]), nil
 }
 
-// VerifyEd25519V1 verifies the signature. If payloadBytes is non-nil,
-// it also verifies payload hash matches payloadBytes.
-func VerifyEd25519V1(env Envelope, pub ed25519.PublicKey, payloadBytes []byte) error {
-	if env.V != 1 {
-		return fmt.Errorf("v1: invalid v=%d (expected 1)", env.V)
-	}
-	if env.Alg == "" {
-		env.Alg = V1AlgEd25519
-	}
-	if env.Alg != V1AlgEd25519 {
-		return errors.New("v1: unsupported alg: " + env.Alg)
-	}
-	if env.Kid == "" {
-		return errors.New("v1: missing kid")
-	}
-	if env.PayloadEncoding == "" {
-		return errors.New("v1: missing payload_encoding")
-	}
-	if env.PayloadEncoding != V1PayloadEncodingJCS && env.PayloadEncoding != V1PayloadEncodingRaw {
-		return errors.New("v1: unsupported payload_encoding: " + env.PayloadEncoding)
-	}
-	if env.PayloadHashAlg == "" {
-		env.PayloadHashAlg = V1PayloadHashAlgSHA256
-	}
-	if env.PayloadHashAlg != V1PayloadHashAlgSHA256 {
-		return errors.New("v1: unsupported payload_hash_alg: " + env.PayloadHashAlg)
-	}
-	if env.PayloadHash == "" {
+func VerifyPayloadHash(envelope Envelope, payloadBytes []byte) error {
+	if envelope.PayloadHash == "" {
 		return errors.New("v1: missing payload_hash")
 	}
-	if env.Sig == "" {
+
+	want, err := ComputePayloadHashV1(payloadBytes, envelope.PayloadEncoding)
+	if err != nil {
+		return err
+	}
+	if envelope.PayloadHash != want {
+		return fmt.Errorf("v1: payload hash mismatch")
+	}
+	return nil
+}
+
+func VerifyEd25519V1(envelope Envelope, pub ed25519.PublicKey) error {
+	if envelope.V != 1 {
+		return fmt.Errorf("v1: invalid v=%d (expected 1)", envelope.V)
+	}
+	if envelope.Alg != V1AlgEd25519 {
+		return errors.New("v1: unsupported alg: " + envelope.Alg)
+	}
+	if envelope.Kid == "" {
+		return errors.New("v1: missing kid")
+	}
+	if envelope.PayloadEncoding == "" {
+		return errors.New("v1: missing payload_encoding")
+	}
+	if envelope.PayloadEncoding != V1PayloadEncodingJCS && envelope.PayloadEncoding != V1PayloadEncodingRaw {
+		return errors.New("v1: unsupported payload_encoding: " + envelope.PayloadEncoding)
+	}
+	if envelope.PayloadHashAlg != V1PayloadHashAlgSHA256 {
+		return errors.New("v1: unsupported payload_hash_alg: " + envelope.PayloadHashAlg)
+	}
+	if envelope.PayloadHash == "" {
+		return errors.New("v1: missing payload_hash")
+	}
+	if envelope.Sig == "" {
 		return errors.New("v1: missing sig")
 	}
 
-	// optional payload hash verification
-	if payloadBytes != nil {
-		want, err := ComputePayloadHashV1(payloadBytes, env.PayloadEncoding)
-		if err != nil {
-			return err
-		}
-		if env.PayloadHash != want {
-			return fmt.Errorf("v1: payload hash mismatch")
-		}
-	}
-
-	sig, err := base64.StdEncoding.DecodeString(env.Sig)
+	sig, err := base64.StdEncoding.DecodeString(envelope.Sig)
 	if err != nil {
 		return errors.New("v1: invalid sig (base64 decode failed)")
 	}
@@ -100,7 +96,7 @@ func VerifyEd25519V1(env Envelope, pub ed25519.PublicKey, payloadBytes []byte) e
 		return errors.New("v1: invalid sig size")
 	}
 
-	unsigned := env
+	unsigned := envelope
 	unsigned.Sig = ""
 
 	b, err := json.Marshal(unsigned)

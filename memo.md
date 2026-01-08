@@ -32,13 +32,13 @@ $ go run ./cmd/veriseal canon --input .local/input/payload.json --output .local/
 ### json
 
 ```
-$ go run ./cmd/veriseal sign --privkey .local/keys/ed25519.priv.b64 --input .local/input/envelope.json --payload-file .local/input/payload.json --payload-encoding JCS --output .local/out/envelope.signed.json
+$ go run ./cmd/veriseal sign --privkey .local/keys/ed25519.priv.b64 --input .local/input/envelope.json --payload-file .local/input/payload.json --output .local/out/envelope.signed.json
 ```
 
 ### raw
 
 ```
-$ go run ./cmd/veriseal sign --privkey .local/keys/ed25519.priv.b64 --input .local/out/envelope.json --payload-file .local/input/payload.bin  --payload-encoding raw --output .local/out/envelope.signed.json
+$ go run ./cmd/veriseal sign --privkey .local/keys/ed25519.priv.b64 --input .local/input/envelope.raw.json --payload-file .local/input/payload.bin --output .local/out/envelope.raw.signed.json
 ```
 
 ## verify
@@ -54,5 +54,7 @@ $ go run ./cmd/veriseal verify --pubkey .local/keys/ed25519.pub.b64 --input .loc
 ### raw
 
 ```
-$ go run ./cmd/veriseal verify --pubkey .local/keys/ed25519.pub.b64 --input .local/out/envelope.signed.json --payload-file .local/input/payload.bin
+$ go run ./cmd/veriseal verify --pubkey .local/keys/ed25519.pub.b64 --input .local/out/envelope.raw.signed.json
+
+$ go run ./cmd/veriseal verify --pubkey .local/keys/ed25519.pub.b64 --input .local/out/envelope.raw.signed.json --payload-file .local/input/payload.bin
 ```
