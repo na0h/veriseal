@@ -1,10 +1,17 @@
 # VeriSeal
 
-VeriSeal は、署名とハッシュにより「検証可能なデータ（Verifiable Data）」を扱うための最小ツールキットです。
+VeriSeal は、署名とハッシュにより **検証可能なデータ（Verifiable Data）** を扱うための最小ツールキットです。
 
-- EdgeGW やサーバーを信頼しない前提
-- クラウドは保存・転送のみ（信頼点にしない）
-- 第三者・後段システムが独立して検証できることを重視
+---
+
+## コンセプト
+
+VeriSeal は「データそのもの」ではなく、**データが改ざんされていないことを検証可能にするためのメタ情報**を扱います。
+
+- Envelope は payload のハッシュと署名のみを保持する
+- payload は検証時に **外部から与える**
+
+---
 
 ## Envelope v1
 
@@ -13,7 +20,6 @@ VeriSeal は、署名とハッシュにより「検証可能なデータ（Verif
   "v": 1,
   "alg": "Ed25519",
   "kid": "demo-1",
-  "payload_type": "application/json",
   "payload_encoding": "JCS",
   "payload_hash_alg": "SHA-256",
   "payload_hash": "BASE64...",
@@ -21,52 +27,113 @@ VeriSeal は、署名とハッシュにより「検証可能なデータ（Verif
 }
 ```
 
-### payload_encoding（v1 必須）
+### フィールド説明
 
-- `JCS`: payload は JSON。`payload_hash = SHA-256( JCS(payload) bytes )`
-- `raw`: payload は bytes。`payload_hash = SHA-256(payload bytes)`
+- `v`
+  - Envelope バージョン（v1 固定）
 
-## 通信モデル
+- `alg`
+  - 署名アルゴリズム
+  - v1 では `Ed25519` のみ
 
-### モードA: JSON-only（推奨）
+- `kid`
+  - 鍵識別子（Key ID）
 
-- `Content-Type: application/json`
-- body: `{ envelope, payload }`
-- Envelope: `payload_encoding = "JCS"`
+- `payload_encoding`
+  - payload の正規化方法
 
-### モードB: multipart（binary 推奨）
+- `payload_hash_alg`
+  - payload ハッシュアルゴリズム
+  - v1 では `SHA-256` のみ
 
-- `Content-Type: multipart/form-data`
-- parts:
-  - `envelope`（`application/json`）
-  - `payload`（任意の bytes）
-- Envelope: `payload_encoding = "raw"`
+- `payload_hash`
+  - 正規化後 payload bytes に対する SHA-256 の Base64 表現
 
-hash 対象は **payload part の body bytes のみ**（multipart の境界やヘッダ等は含めない）。
-中継・保存は payload bytes を変更しないこと（改行変換・再圧縮・charset 変換などをしない）。
+- `sig`
+  - 署名値（Base64）
 
-### モードC: JSON + base64（フォールバック）
+---
 
-- `Content-Type: application/json`
-- body: `{ envelope, payload_b64 }`
-- Envelope: `payload_encoding = "raw"`
+## payload_encoding（v1）
+
+### `JCS`
+
+- payload は JSON
+- JSON のキー順や空白差分は影響しない
+
+### `raw`
+
+- payload は任意の bytes
+- 文字コード・改行変換・再圧縮などを行ってはならない
+
+---
+
+## 署名・検証モデル
+
+署名は payload_hash を含む Envelope 全体に対して行われ、payload_hash の検証と署名検証は独立して実行可能である。
+
+---
 
 ## CLI
 
 ### sign
 
-`payload_encoding` に応じて payload hash を計算し、Envelope を署名します。
+payload を読み込み、Envelope に署名します。
 
 ```sh
-veriseal sign --privkey ./privkey --input envelope.json --payload-file payload.json --payload-encoding JCS --output envelope.signed.json
-veriseal sign --privkey ./privkey --input envelope.json --payload-file payload.bin --payload-encoding raw --output envelope.signed.json
+veriseal sign \
+  --privkey privkey.pem \
+  --input envelope.json \
+  --payload-file payload.json \
+  --output envelope.signed.json
+```
+
+```json
+// envelope.json sample
+{
+  "v": 1,
+  "alg": "Ed25519",
+  "kid": "demo-1",
+  "payload_encoding": "JCS",
+  "payload_hash_alg": "SHA-256",
+  "payload_hash": "",
+  "sig": ""
+}
 ```
 
 ### verify
 
-payload を渡すと payload hash まで検証します。
+署名検証を行います。payload を指定した場合は payload_hash も検証します。
 
 ```sh
-veriseal verify --pubkey ./pubkey --input envelope.signed.json
-veriseal verify --pubkey ./pubkey --input envelope.signed.json --payload-file payload.bin
+veriseal verify \
+  --pubkey pubkey.pem \
+  --input envelope.signed.json
+
+veriseal verify \
+  --pubkey pubkey.pem \
+  --input envelope.signed.json \
+  --payload-file payload.json
 ```
+
+---
+
+## 鍵形式
+
+- 秘密鍵: Ed25519 / PKCS#8 PEM（`BEGIN PRIVATE KEY`）
+- 公開鍵: Ed25519 / SPKI PEM（`BEGIN PUBLIC KEY`）
+
+```sh
+# private (PKCS#8 PEM)
+openssl genpkey \
+  -algorithm ED25519 \
+  -out privkey.pem
+
+# public (SPKI PEM)
+openssl pkey \
+  -in privkey.pem \
+  -pubout \
+  -out pubkey.pem
+```
+---
+
