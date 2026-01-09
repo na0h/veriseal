@@ -5,6 +5,7 @@
   "ignorePaths": [],
   "words": [
     "gowebpki",
+    "PKCS",
     "privkey",
     "testdata",
     "VeriSeal"
