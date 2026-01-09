@@ -55,7 +55,7 @@ func VerifyEd25519(envelope Envelope, pub ed25519.PublicKey) error {
 	if err := ValidateEnvelopeV1(envelope); err != nil {
 		return err
 	}
-	if err := ValidateEnvelopeV1FroVerify(envelope); err != nil {
+	if err := ValidateEnvelopeV1ForVerify(envelope); err != nil {
 		return err
 	}
 

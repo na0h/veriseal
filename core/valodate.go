@@ -26,7 +26,7 @@ func ValidateEnvelopeV1(envelope Envelope) error {
 	return nil
 }
 
-func ValidateEnvelopeV1FroVerify(envelope Envelope) error {
+func ValidateEnvelopeV1ForVerify(envelope Envelope) error {
 	if envelope.PayloadHash == "" {
 		return fmt.Errorf("missing payload_hash")
 	}
