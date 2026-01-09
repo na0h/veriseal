@@ -18,6 +18,9 @@ const (
 	exitFail = 1
 )
 
+// version is set at build time via -ldflags "-X main.version=vX.Y.Z"
+var version = "dev"
+
 type command struct {
 	name string
 	run  func(args []string) error
@@ -29,6 +32,7 @@ func main() {
 		{name: "canon", run: runCanon, help: "Canonicalize JSON input using JCS."},
 		{name: "sign", run: runSign, help: "Sign an envelope (Sig empty) with Ed25519 using a payload file."},
 		{name: "verify", run: runVerify, help: "Verify Ed25519 signature and optionally verify payload_hash using a payload file."},
+		{name: "version", run: runVersion, help: "Print veriseal version."},
 	}
 
 	args := os.Args[1:]
@@ -89,6 +93,11 @@ func printUsage(w io.Writer, cmds []command) {
 	}
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "run 'veriseal <command> -h' for command-specific options")
+}
+
+func runVersion(args []string) error {
+	fmt.Fprintln(os.Stdout, version)
+	return nil
 }
 
 func runCanon(args []string) error {

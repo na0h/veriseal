@@ -5,3 +5,7 @@
 *.b64
 out.json
 .DS_Store
+
+/veriseal
+/veriseal_*
+*.exe
