@@ -4,21 +4,18 @@
 
 ```
 $ mkdir -p .local/keys
-$ go run ./tools/genkey keygen --out .local/keys
+
+# private (PKCS#8 PEM)
+openssl genpkey -algorithm ED25519 -out .local/keys/ed25519.priv.pem
+
+# public (SPKI PEM)
+openssl pkey -in .local/keys/ed25519.priv.pem -pubout -out .local/keys/ed25519.pub.pem
 ```
 
 ```
 $ mkdir -p .local/input
 $ mkdir -p .local/out
 $ echo hello world > .local/input/payload.bin
-```
-
-```
-# private (PKCS#8 PEM)
-openssl genpkey -algorithm ED25519 -out .local/keys/ed25519.priv.pem
-
-# public (SPKI PEM)
-openssl pkey -in .local/keys/ed25519.priv.pem -pubout -out .local/keys/ed25519.pub.pem
 ```
 
 ## unit test
