@@ -55,7 +55,7 @@ func runCanon(args []string) {
 
 func runSign(args []string) {
 	fs := flag.NewFlagSet("sign", flag.ExitOnError)
-	privPath := fs.String("privkey", "", "path to ed25519 private key (base64 or raw 64 bytes)")
+	privPath := fs.String("privkey", "", "path to ed25519 private key")
 	inPath := fs.String("input", "", "input file path")
 	outPath := fs.String("output", "", "output file path")
 
@@ -106,7 +106,7 @@ func runSign(args []string) {
 
 func runVerify(args []string) {
 	fs := flag.NewFlagSet("verify", flag.ExitOnError)
-	pubPath := fs.String("pubkey", "", "path to ed25519 public key (base64 or raw 32 bytes)")
+	pubPath := fs.String("pubkey", "", "path to ed25519 public key")
 	inPath := fs.String("input", "", "input signed file path")
 
 	payloadFile := fs.String("payload-file", "", "payload file path")
