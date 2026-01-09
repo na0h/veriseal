@@ -2,15 +2,15 @@ package canonical
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 
 	jcs "github.com/gowebpki/jcs"
 )
 
 var (
-	ErrEmptyInput          = errors.New("empty input")
-	ErrInvalidJSON         = errors.New("invalid json")
-	ErrTopLevelNotObjArray = errors.New("top-level JSON must be object or array")
+	ErrEmptyInput          = fmt.Errorf("empty input")
+	ErrInvalidJSON         = fmt.Errorf("invalid json")
+	ErrTopLevelNotObjArray = fmt.Errorf("top-level JSON must be object or array")
 )
 
 func Canonicalize(input []byte) ([]byte, error) {

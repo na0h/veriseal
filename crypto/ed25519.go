@@ -3,15 +3,11 @@ package crypto
 import (
 	"crypto/ed25519"
 	"encoding/base64"
-	"errors"
+	"fmt"
 	"os"
 	"strings"
 )
 
-// LoadEd25519PrivateKey loads raw ed25519 private key bytes from a file.
-// Accepted formats (v0):
-// - base64 (recommended): file contains base64 string (with or without newlines)
-// - raw 64 bytes (ed25519.PrivateKey) file
 func LoadEd25519PrivateKey(path string) (ed25519.PrivateKey, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -51,7 +47,7 @@ func LoadEd25519PublicKey(path string) (ed25519.PublicKey, error) {
 func toPrivateKey(raw []byte) (ed25519.PrivateKey, error) {
 	raw = bytesTrimSpace(raw)
 	if len(raw) != ed25519.PrivateKeySize {
-		return nil, errors.New("invalid ed25519 private key size (expected 64 bytes)")
+		return nil, fmt.Errorf("invalid ed25519 private key size (expected 64 bytes)")
 	}
 	return ed25519.PrivateKey(raw), nil
 }
@@ -59,13 +55,12 @@ func toPrivateKey(raw []byte) (ed25519.PrivateKey, error) {
 func toPublicKey(raw []byte) (ed25519.PublicKey, error) {
 	raw = bytesTrimSpace(raw)
 	if len(raw) != ed25519.PublicKeySize {
-		return nil, errors.New("invalid ed25519 public key size (expected 32 bytes)")
+		return nil, fmt.Errorf("invalid ed25519 public key size (expected 32 bytes)")
 	}
 	return ed25519.PublicKey(raw), nil
 }
 
 func looksBase64(s string) bool {
-	// cheap heuristic: base64 chars and length multiple of 4 (not strict)
 	if len(s)%4 != 0 {
 		return false
 	}
@@ -82,7 +77,6 @@ func looksBase64(s string) bool {
 }
 
 func bytesTrimSpace(b []byte) []byte {
-	// Trim common whitespace without pulling in bytes.TrimSpace (好みで)
 	start := 0
 	for start < len(b) && (b[start] == ' ' || b[start] == '\n' || b[start] == '\r' || b[start] == '\t') {
 		start++

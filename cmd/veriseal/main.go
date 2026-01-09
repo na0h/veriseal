@@ -90,7 +90,7 @@ func runSign(args []string) {
 		fatal(err)
 	}
 
-	signed, err := core.SignEd25519V1(envelope, payloadBytes, priv)
+	signed, err := core.SignEd25519(envelope, payloadBytes, priv)
 	if err != nil {
 		fatal(err)
 	}
@@ -152,7 +152,7 @@ func runVerify(args []string) {
 	}
 
 	verifiedEd25519 := false
-	if err := core.VerifyEd25519V1(envelope, pub); err != nil {
+	if err := core.VerifyEd25519(envelope, pub); err != nil {
 		fmt.Fprintln(os.Stderr, "FAIL:", err)
 	} else {
 		verifiedEd25519 = true

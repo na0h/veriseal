@@ -1,8 +1,8 @@
 package core
 
 type Envelope struct {
-	V   int    `json:"v"`   // must be 1
-	Alg string `json:"alg"` // "Ed25519"
+	V   int    `json:"v"`
+	Alg string `json:"alg"`
 	Kid string `json:"kid"`
 
 	// PayloadEncoding declares how the payload hash was computed.
@@ -10,8 +10,8 @@ type Envelope struct {
 	// - "raw": payload is treated as raw bytes.
 	PayloadEncoding string `json:"payload_encoding"`
 
-	PayloadHashAlg string `json:"payload_hash_alg"` // "SHA-256"
-	PayloadHash    string `json:"payload_hash"`     // base64(sha256(payloadBytes))
+	PayloadHashAlg string `json:"payload_hash_alg"`
+	PayloadHash    string `json:"payload_hash"`
 
-	Sig string `json:"sig,omitempty"` // base64(ed25519 signature)
+	Sig string `json:"sig,omitempty"`
 }
