@@ -2,6 +2,10 @@
 
 VeriSeal は、署名とハッシュにより **検証可能なデータ（Verifiable Data）** を扱うための最小ツールキットです。
 
+## License
+
+Apache License 2.0
+
 ---
 
 ## コンセプト
