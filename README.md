@@ -1,6 +1,8 @@
 # VeriSeal
 
-VeriSeal は、署名とハッシュにより **検証可能なデータ（Verifiable Data）** を扱うための最小ツールキットです。
+VeriSeal is a minimal toolkit for handling **verifiable data** using signatures and hashes.
+
+[日本語版 README](README.ja.md)
 
 ## License
 
@@ -8,12 +10,12 @@ Apache License 2.0
 
 ---
 
-## コンセプト
+## Concept
 
-VeriSeal は「データそのもの」ではなく、**データが改ざんされていないことを検証可能にするためのメタ情報**を扱います。
+VeriSeal does not handle the data itself. Instead, it handles **metadata that enables verification that data has not been tampered with**.
 
-- Envelope は payload のハッシュと署名のみを保持する
-- payload は検証時に **外部から与える**
+- An Envelope contains only a hash of the payload and a signature
+- The payload itself is provided **externally at verification time**
 
 ---
 
@@ -31,50 +33,51 @@ VeriSeal は「データそのもの」ではなく、**データが改ざんさ
 }
 ```
 
-### フィールド説明
+### Fields
 
 - `v`
-  - Envelope バージョン（v1 固定）
+  - Envelope version (fixed to v1)
 
 - `alg`
-  - 署名アルゴリズム
-  - v1 では `Ed25519` のみ
+  - Signature algorithm
+  - v1 supports `Ed25519` only
 
 - `kid`
-  - 鍵識別子（Key ID）
+  - Key identifier (Key ID)
 
 - `payload_encoding`
-  - payload の正規化方法
+  - Normalization method applied to the payload
 
 - `payload_hash_alg`
-  - payload ハッシュアルゴリズム
-  - v1 では `SHA-256` のみ
+  - Payload hash algorithm
+  - v1 supports `SHA-256` only
 
 - `payload_hash`
-  - 正規化後 payload bytes に対する SHA-256 の Base64 表現
+  - Base64-encoded SHA-256 hash of normalized payload bytes
 
 - `sig`
-  - 署名値（Base64）
+  - Signature value (Base64)
 
 ---
 
-## payload_encoding（v1）
+## payload_encoding (v1)
 
 ### `JCS`
 
-- payload は JSON
-- JSON のキー順や空白差分は影響しない
+- Payload must be JSON
+- JSON key order and whitespace differences do not affect the hash
 
 ### `raw`
 
-- payload は任意の bytes
-- 文字コード・改行変換・再圧縮などを行ってはならない
+- Payload is treated as arbitrary bytes
+- Character encoding changes, newline conversions, or recompression must not be performed
 
 ---
 
-## 署名・検証モデル
+## Signing and Verification Model
 
-署名は payload_hash を含む Envelope 全体に対して行われ、payload_hash の検証と署名検証は独立して実行可能である。
+The signature is computed over the entire Envelope including `payload_hash`.  
+Verification of `payload_hash` and verification of the signature are independent operations.
 
 ---
 
@@ -82,7 +85,7 @@ VeriSeal は「データそのもの」ではなく、**データが改ざんさ
 
 ### sign
 
-payload を読み込み、Envelope に署名します。
+Reads a payload and signs an Envelope.
 
 ```sh
 veriseal sign \
@@ -107,7 +110,7 @@ veriseal sign \
 
 ### verify
 
-署名検証を行います。payload を指定した場合は payload_hash も検証します。
+Verifies a signature. If a payload is provided, `payload_hash` is also verified.
 
 ```sh
 veriseal verify \
@@ -122,10 +125,10 @@ veriseal verify \
 
 ---
 
-## 鍵形式
+## Key Formats
 
-- 秘密鍵: Ed25519 / PKCS#8 PEM（`BEGIN PRIVATE KEY`）
-- 公開鍵: Ed25519 / SPKI PEM（`BEGIN PUBLIC KEY`）
+- Private key: Ed25519 / PKCS#8 PEM (`BEGIN PRIVATE KEY`)
+- Public key: Ed25519 / SPKI PEM (`BEGIN PUBLIC KEY`)
 
 ```sh
 # private (PKCS#8 PEM)
@@ -139,5 +142,5 @@ openssl pkey \
   -pubout \
   -out pubkey.pem
 ```
----
 
+---
