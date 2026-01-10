@@ -1,0 +1,15 @@
+{
+  "version": "0.2",
+  "dictionaryDefinitions": [],
+  "dictionaries": [],
+  "ignorePaths": [],
+  "words": [
+    "gowebpki",
+    "PKCS",
+    "privkey",
+    "testdata",
+    "VeriSeal"
+  ],
+  "ignoreWords": [],
+  "import": []
+}
