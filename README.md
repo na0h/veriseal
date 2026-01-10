@@ -76,12 +76,34 @@ VeriSeal does not handle the data itself. Instead, it handles **metadata that en
 
 ## Signing and Verification Model
 
-The signature is computed over the entire Envelope including `payload_hash`.  
+The signature is computed over the entire Envelope including `payload_hash`.
 Verification of `payload_hash` and verification of the signature are independent operations.
 
 ---
 
 ## CLI
+
+### envelope
+
+Prints an **Envelope v1 JSON template**.
+
+```sh
+veriseal envelope --kid demo-1 --payload-encoding JSC --output envelope.json
+```
+
+The generated template contains empty `payload_hash` and `sig` fields, which are filled by the `sign` command.
+
+```json
+{
+  "v": 1,
+  "alg": "Ed25519",
+  "kid": "demo-1",
+  "payload_encoding": "JCS",
+  "payload_hash_alg": "SHA-256",
+  "payload_hash": "",
+  "sig": ""
+}
+```
 
 ### sign
 
@@ -93,19 +115,6 @@ veriseal sign \
   --input envelope.json \
   --payload-file payload.json \
   --output envelope.signed.json
-```
-
-```json
-// envelope.json sample
-{
-  "v": 1,
-  "alg": "Ed25519",
-  "kid": "demo-1",
-  "payload_encoding": "JCS",
-  "payload_hash_alg": "SHA-256",
-  "payload_hash": "",
-  "sig": ""
-}
 ```
 
 ### verify

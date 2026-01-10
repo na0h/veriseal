@@ -30,6 +30,7 @@ type command struct {
 func main() {
 	cmds := []command{
 		{name: "canon", run: runCanon, help: "Canonicalize JSON input using JCS."},
+		{name: "envelope", run: runEnvelope, help: "Print an Envelope v1 JSON template."},
 		{name: "sign", run: runSign, help: "Sign an envelope (Sig empty) with Ed25519 using a payload file."},
 		{name: "verify", run: runVerify, help: "Verify Ed25519 signature and optionally verify payload_hash using a payload file."},
 		{name: "version", run: runVersion, help: "Print veriseal version."},
@@ -98,6 +99,57 @@ func printUsage(w io.Writer, cmds []command) {
 func runVersion(args []string) error {
 	fmt.Fprintln(os.Stdout, version)
 	return nil
+}
+
+// Envelope template
+func runEnvelope(args []string) error {
+	fs := flag.NewFlagSet("envelope", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	kid := fs.String("kid", "", "key id (optional)")
+	payloadEncoding := fs.String("payload-encoding", core.V1PayloadEncodingJCS, "payload encoding: JCS or raw")
+	outPath := fs.String("output", "", "output file path (default: stdout)")
+
+	if err := parseFlags(fs, args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			printEnvelopeUsage(os.Stdout)
+			return nil
+		}
+		printEnvelopeUsage(os.Stderr)
+		return err
+	}
+
+	enc := *payloadEncoding
+	if enc != core.V1PayloadEncodingJCS && enc != core.V1PayloadEncodingRaw {
+		printEnvelopeUsage(os.Stderr)
+		return fmt.Errorf("invalid --payload-encoding: %s", enc)
+	}
+
+	env := core.Envelope{
+		V:               core.Version1,
+		Alg:             core.V1AlgEd25519,
+		Kid:             *kid,
+		PayloadEncoding: enc,
+		PayloadHashAlg:  core.V1PayloadHashAlgSHA256,
+		PayloadHash:     "",
+		Sig:             "",
+	}
+
+	out, err := json.MarshalIndent(env, "", "  ")
+	if err != nil {
+		return err
+	}
+	out = append(out, '\n')
+	return writeOutput(*outPath, out)
+}
+
+func printEnvelopeUsage(w io.Writer) {
+	fmt.Fprintln(w, "usage: veriseal envelope [options]")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "options:")
+	fmt.Fprintln(w, "  --kid              key id (optional)")
+	fmt.Fprintln(w, "  --payload-encoding payload encoding: JCS or raw (default: JCS)")
+	fmt.Fprintln(w, "  --output           output file path (default: stdout)")
 }
 
 func runCanon(args []string) error {

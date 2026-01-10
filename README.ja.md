@@ -80,6 +80,28 @@ VeriSeal は「データそのもの」ではなく、**データが改ざんさ
 
 ## CLI
 
+### envelope
+
+**Envelope v1 の JSON テンプレート**を出力します。
+
+```sh
+veriseal envelope --kid demo-1 --payload-encoding JSC --output envelope.json
+```
+
+生成されるテンプレートでは、`payload_hash`と`sig`は空になっています。これらのフィールドは、後続の`sign`コマンドによって設定されます。
+
+```json
+{
+  "v": 1,
+  "alg": "Ed25519",
+  "kid": "demo-1",
+  "payload_encoding": "JCS",
+  "payload_hash_alg": "SHA-256",
+  "payload_hash": "",
+  "sig": ""
+}
+```
+
 ### sign
 
 payload を読み込み、Envelope に署名します。
@@ -90,19 +112,6 @@ veriseal sign \
   --input envelope.json \
   --payload-file payload.json \
   --output envelope.signed.json
-```
-
-```json
-// envelope.json sample
-{
-  "v": 1,
-  "alg": "Ed25519",
-  "kid": "demo-1",
-  "payload_encoding": "JCS",
-  "payload_hash_alg": "SHA-256",
-  "payload_hash": "",
-  "sig": ""
-}
 ```
 
 ### verify
