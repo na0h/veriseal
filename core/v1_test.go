@@ -322,3 +322,53 @@ func TestV1_SignVerify_SetIat_OverwritesAndVerifies_OK(t *testing.T) {
 		t.Fatalf("verify sig: %v", err)
 	}
 }
+
+func TestV1_SignVerify_SetIat_WhenMissing_OK(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	payload := []byte(`{"a":1,"b":2}`)
+	env := baseEnvelopeJCS()
+	// iat is not set in input
+
+	signed, err := SignEd25519(env, payload, priv, true)
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+	}
+	if signed.Iat == nil {
+		t.Fatalf("iat should be set")
+	}
+
+	if err := VerifyEd25519(signed, pub); err != nil {
+		t.Fatalf("verify sig: %v", err)
+	}
+}
+
+func TestV1_Verify_IatTampered_Fails(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	payload := []byte(`{"a":1,"b":2}`)
+	env := baseEnvelopeJCS()
+
+	signed, err := SignEd25519(env, payload, priv, true)
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+	}
+	if signed.Iat == nil {
+		t.Fatalf("iat should be set")
+	}
+
+	// Tamper iat
+	v := *signed.Iat
+	v++
+	signed.Iat = &v
+
+	if err := VerifyEd25519(signed, pub); err == nil {
+		t.Fatalf("want verify failure after tampering iat, got nil")
+	}
+}
