@@ -5,6 +5,9 @@ type Envelope struct {
 	Alg string `json:"alg"`
 	Kid string `json:"kid"`
 
+	// Iat is the issued-at time (epoch seconds). Optional.
+	Iat *int64 `json:"iat,omitempty"`
+
 	// PayloadEncoding declares how the payload hash was computed.
 	// - "JCS": payload is JSON and the hash is computed over JCS(payload) bytes.
 	// - "raw": payload is treated as raw bytes.

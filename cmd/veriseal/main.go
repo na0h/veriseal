@@ -32,7 +32,7 @@ func main() {
 	cmds := []command{
 		{name: "canon", run: runCanon, help: "Canonicalize JSON input using JCS."},
 		{name: "init", run: runInit, help: "Print an Envelope v1 JSON template."},
-		{name: "sign", run: runSign, help: "Sign an envelope (Sig empty) with Ed25519 using a payload file."},
+		{name: "sign", run: runSign, help: "Sign an envelope template with Ed25519 using a payload file."},
 		{name: "verify", run: runVerify, help: "Verify Ed25519 signature and optionally verify payload_hash using a payload file."},
 		{name: "version", run: runVersion, help: "Print veriseal version."},
 	}
@@ -203,6 +203,7 @@ func runSign(args []string) error {
 	inPath := fs.String("input", "", "input envelope JSON file path")
 	outPath := fs.String("output", "", "output file path (default: stdout)")
 	payloadFile := fs.String("payload-file", "", "payload file path")
+	setIat := fs.Bool("set-iat", false, "set iat (epoch seconds) right before signing")
 
 	if err := parseFlags(fs, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -246,9 +247,19 @@ func runSign(args []string) error {
 		return err
 	}
 
-	signed, err := core.SignEd25519(envelope, payloadBytes, priv)
+	signed, err := core.SignEd25519(envelope, payloadBytes, priv, *setIat)
 	if err != nil {
 		return err
+	}
+
+	if *setIat && envelope.Iat != nil {
+		old := *envelope.Iat
+		fmt.Fprintf(
+			os.Stderr,
+			"WARN: iat overwritten (old=%d, new=%d)\n",
+			old,
+			*signed.Iat,
+		)
 	}
 
 	out, err := json.MarshalIndent(signed, "", "  ")
@@ -264,10 +275,11 @@ func printSignUsage(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "required:")
 	fmt.Fprintln(w, "  --privkey       path to ed25519 private key (PKCS#8 PEM)")
-	fmt.Fprintln(w, "  --input         envelope JSON file (Sig should be empty)")
+	fmt.Fprintln(w, "  --input         envelope template JSON file")
 	fmt.Fprintln(w, "  --payload-file  payload file path")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "options:")
+	fmt.Fprintln(w, "  --set-iat       set iat (epoch seconds) right before signing")
 	fmt.Fprintln(w, "  --output        output file path (default: stdout)")
 }
 
