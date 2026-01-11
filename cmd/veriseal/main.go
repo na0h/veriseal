@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/na0h/veriseal/canonical"
 	"github.com/na0h/veriseal/core"
@@ -30,7 +31,7 @@ type command struct {
 func main() {
 	cmds := []command{
 		{name: "canon", run: runCanon, help: "Canonicalize JSON input using JCS."},
-		{name: "envelope", run: runEnvelope, help: "Print an Envelope v1 JSON template."},
+		{name: "init", run: runInit, help: "Print an Envelope v1 JSON template."},
 		{name: "sign", run: runSign, help: "Sign an envelope (Sig empty) with Ed25519 using a payload file."},
 		{name: "verify", run: runVerify, help: "Verify Ed25519 signature and optionally verify payload_hash using a payload file."},
 		{name: "version", run: runVersion, help: "Print veriseal version."},
@@ -101,27 +102,31 @@ func runVersion(args []string) error {
 	return nil
 }
 
-// Envelope template
-func runEnvelope(args []string) error {
-	fs := flag.NewFlagSet("envelope", flag.ContinueOnError)
+func runInit(args []string) error {
+	fs := flag.NewFlagSet("init", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
-	kid := fs.String("kid", "", "key id (optional)")
+	kid := fs.String("kid", "", "key id")
 	payloadEncoding := fs.String("payload-encoding", core.V1PayloadEncodingJCS, "payload encoding: JCS or raw")
 	outPath := fs.String("output", "", "output file path (default: stdout)")
 
 	if err := parseFlags(fs, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
-			printEnvelopeUsage(os.Stdout)
+			printInitUsage(os.Stdout)
 			return nil
 		}
-		printEnvelopeUsage(os.Stderr)
+		printInitUsage(os.Stderr)
 		return err
+	}
+
+	if strings.TrimSpace(*kid) == "" {
+		printInitUsage(os.Stderr)
+		return fmt.Errorf("--kid is required")
 	}
 
 	enc := *payloadEncoding
 	if enc != core.V1PayloadEncodingJCS && enc != core.V1PayloadEncodingRaw {
-		printEnvelopeUsage(os.Stderr)
+		printInitUsage(os.Stderr)
 		return fmt.Errorf("invalid --payload-encoding: %s", enc)
 	}
 
@@ -131,8 +136,6 @@ func runEnvelope(args []string) error {
 		Kid:             *kid,
 		PayloadEncoding: enc,
 		PayloadHashAlg:  core.V1PayloadHashAlgSHA256,
-		PayloadHash:     "",
-		Sig:             "",
 	}
 
 	out, err := json.MarshalIndent(env, "", "  ")
@@ -143,11 +146,11 @@ func runEnvelope(args []string) error {
 	return writeOutput(*outPath, out)
 }
 
-func printEnvelopeUsage(w io.Writer) {
-	fmt.Fprintln(w, "usage: veriseal envelope [options]")
+func printInitUsage(w io.Writer) {
+	fmt.Fprintln(w, "usage: veriseal init [options]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "options:")
-	fmt.Fprintln(w, "  --kid              key id (optional)")
+	fmt.Fprintln(w, "  --kid              key id")
 	fmt.Fprintln(w, "  --payload-encoding payload encoding: JCS or raw (default: JCS)")
 	fmt.Fprintln(w, "  --output           output file path (default: stdout)")
 }
