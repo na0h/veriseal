@@ -59,7 +59,8 @@ func VerifyEd25519(envelope Envelope, pub ed25519.PublicKey) error {
 		return err
 	}
 
-	sig, err := base64.StdEncoding.DecodeString(envelope.Sig)
+	s := envelope.Sig
+	sig, err := base64.StdEncoding.DecodeString(*s)
 	if err != nil {
 		return fmt.Errorf("invalid sig (base64 decode failed)")
 	}
@@ -68,7 +69,7 @@ func VerifyEd25519(envelope Envelope, pub ed25519.PublicKey) error {
 	}
 
 	unsigned := envelope
-	unsigned.Sig = ""
+	unsigned.Sig = nil
 
 	b, err := json.Marshal(unsigned)
 	if err != nil {

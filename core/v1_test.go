@@ -266,7 +266,7 @@ func TestV1_Validate_VerifyMissingSig_Fail(t *testing.T) {
 		t.Fatalf("sign: %v", err)
 	}
 
-	signed.Sig = ""
+	signed.Sig = nil
 	if err := VerifyEd25519(signed, pub); err == nil {
 		t.Fatalf("want error, got nil")
 	}

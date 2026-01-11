@@ -30,7 +30,8 @@ func ValidateEnvelopeV1ForVerify(envelope Envelope) error {
 	if envelope.PayloadHash == "" {
 		return fmt.Errorf("missing payload_hash")
 	}
-	if envelope.Sig == "" {
+	sig := envelope.Sig
+	if sig == nil || *sig == "" {
 		return fmt.Errorf("missing sig")
 	}
 	return nil

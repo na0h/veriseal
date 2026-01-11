@@ -13,5 +13,5 @@ type Envelope struct {
 	PayloadHashAlg string `json:"payload_hash_alg"`
 	PayloadHash    string `json:"payload_hash,omitempty"`
 
-	Sig string `json:"sig,omitempty"`
+	Sig *string `json:"sig,omitempty"`
 }

@@ -20,7 +20,7 @@ func SignEd25519(envelope Envelope, payloadBytes []byte, priv ed25519.PrivateKey
 	envelope.PayloadHash = h
 
 	unsigned := envelope
-	unsigned.Sig = ""
+	unsigned.Sig = nil
 
 	b, err := json.Marshal(unsigned)
 	if err != nil {
@@ -32,6 +32,7 @@ func SignEd25519(envelope Envelope, payloadBytes []byte, priv ed25519.PrivateKey
 	}
 
 	sig := ed25519.Sign(priv, msg)
-	envelope.Sig = base64.StdEncoding.EncodeToString(sig)
+	sigB64 := base64.StdEncoding.EncodeToString(sig)
+	envelope.Sig = &sigB64
 	return envelope, nil
 }
