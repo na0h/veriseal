@@ -36,7 +36,7 @@ func TestV1_SignVerify_OK(t *testing.T) {
 	payload := []byte(`{"a":1,"b":2}`)
 	env := baseEnvelopeJCS()
 
-	signed, err := SignEd25519(env, payload, priv)
+	signed, err := SignEd25519(env, payload, priv, false)
 	if err != nil {
 		t.Fatalf("sign: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestV1_PayloadChanged_Fails(t *testing.T) {
 	orig := []byte(`{"a":1,"b":2}`)
 	env := baseEnvelopeJCS()
 
-	signed, err := SignEd25519(env, orig, priv)
+	signed, err := SignEd25519(env, orig, priv, false)
 	if err != nil {
 		t.Fatalf("sign: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestV1_JSONOrderDifferent_OK(t *testing.T) {
 	b := []byte(`{"b":2,"a":1}`) // semantic same
 
 	env := baseEnvelopeJCS()
-	signed, err := SignEd25519(env, a, priv)
+	signed, err := SignEd25519(env, a, priv, false)
 	if err != nil {
 		t.Fatalf("sign: %v", err)
 	}
@@ -103,7 +103,7 @@ func TestV1_SignVerify_RawPayload_OK(t *testing.T) {
 	payload := []byte{0x00, 0x01, 0x02, 0xff}
 	env := baseEnvelopeRaw()
 
-	signed, err := SignEd25519(env, payload, priv)
+	signed, err := SignEd25519(env, payload, priv, false)
 	if err != nil {
 		t.Fatalf("sign: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestV1_Verify_RawPayload_OneByteModified_Fail(t *testing.T) {
 	payload := []byte{0x10, 0x20, 0x30, 0x40}
 	env := baseEnvelopeRaw()
 
-	signed, err := SignEd25519(env, payload, priv)
+	signed, err := SignEd25519(env, payload, priv, false)
 	if err != nil {
 		t.Fatalf("sign: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestV1_Verify_RawVsJCS_Mismatch_Fail(t *testing.T) {
 	jcsPayload := []byte(`{"b":2,"a":1}`)
 
 	env := baseEnvelopeRaw()
-	signed, err := SignEd25519(env, rawPayload, priv)
+	signed, err := SignEd25519(env, rawPayload, priv, false)
 	if err != nil {
 		t.Fatalf("sign: %v", err)
 	}
@@ -173,7 +173,7 @@ func TestV1_Validate_VersionInvalid_Fail(t *testing.T) {
 	env := baseEnvelopeJCS()
 	env.V = 2
 
-	_, err = SignEd25519(env, []byte(`{"a":1}`), priv)
+	_, err = SignEd25519(env, []byte(`{"a":1}`), priv, false)
 	if err == nil {
 		t.Fatalf("want error, got nil")
 	}
@@ -191,7 +191,7 @@ func TestV1_Validate_PayloadEncodingMissing_Fail(t *testing.T) {
 	env := baseEnvelopeJCS()
 	env.PayloadEncoding = ""
 
-	_, err = SignEd25519(env, []byte(`{"a":1}`), priv)
+	_, err = SignEd25519(env, []byte(`{"a":1}`), priv, false)
 	if err == nil {
 		t.Fatalf("want error, got nil")
 	}
@@ -209,7 +209,7 @@ func TestV1_Validate_PayloadEncodingUnsupported_Fail(t *testing.T) {
 	env := baseEnvelopeJCS()
 	env.PayloadEncoding = "rawx"
 
-	_, err = SignEd25519(env, []byte(`{"a":1}`), priv)
+	_, err = SignEd25519(env, []byte(`{"a":1}`), priv, false)
 	if err == nil {
 		t.Fatalf("want error, got nil")
 	}
@@ -227,7 +227,7 @@ func TestV1_Validate_PayloadHashAlgUnsupported_Fail(t *testing.T) {
 	env := baseEnvelopeJCS()
 	env.PayloadHashAlg = "sha1"
 
-	_, err = SignEd25519(env, []byte(`{"a":1}`), priv)
+	_, err = SignEd25519(env, []byte(`{"a":1}`), priv, false)
 	if err == nil {
 		t.Fatalf("want error, got nil")
 	}
@@ -243,7 +243,7 @@ func TestV1_Validate_VerifyMissingPayloadHash_Fail(t *testing.T) {
 	}
 
 	env := baseEnvelopeJCS()
-	signed, err := SignEd25519(env, []byte(`{"a":1}`), priv)
+	signed, err := SignEd25519(env, []byte(`{"a":1}`), priv, false)
 	if err != nil {
 		t.Fatalf("sign: %v", err)
 	}
@@ -261,13 +261,114 @@ func TestV1_Validate_VerifyMissingSig_Fail(t *testing.T) {
 	}
 
 	env := baseEnvelopeJCS()
-	signed, err := SignEd25519(env, []byte(`{"a":1}`), priv)
+	signed, err := SignEd25519(env, []byte(`{"a":1}`), priv, false)
 	if err != nil {
 		t.Fatalf("sign: %v", err)
 	}
 
-	signed.Sig = ""
+	signed.Sig = nil
 	if err := VerifyEd25519(signed, pub); err == nil {
 		t.Fatalf("want error, got nil")
+	}
+}
+
+func TestV1_SignVerify_WithIatInInput_OK(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	payload := []byte(`{"a":1,"b":2}`)
+	env := baseEnvelopeJCS()
+	v := int64(1700000000)
+	env.Iat = &v
+
+	signed, err := SignEd25519(env, payload, priv, false)
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+	}
+	if signed.Iat == nil || *signed.Iat != v {
+		t.Fatalf("iat not preserved: got %v", signed.Iat)
+	}
+
+	if err := VerifyEd25519(signed, pub); err != nil {
+		t.Fatalf("verify sig: %v", err)
+	}
+}
+
+func TestV1_SignVerify_SetIat_OverwritesAndVerifies_OK(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	payload := []byte(`{"a":1,"b":2}`)
+	env := baseEnvelopeJCS()
+	old := int64(1700000000)
+	env.Iat = &old
+
+	signed, err := SignEd25519(env, payload, priv, true)
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+	}
+	if signed.Iat == nil {
+		t.Fatalf("iat should be set")
+	}
+	if *signed.Iat == old {
+		t.Fatalf("iat should be overwritten")
+	}
+
+	if err := VerifyEd25519(signed, pub); err != nil {
+		t.Fatalf("verify sig: %v", err)
+	}
+}
+
+func TestV1_SignVerify_SetIat_WhenMissing_OK(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	payload := []byte(`{"a":1,"b":2}`)
+	env := baseEnvelopeJCS()
+	// iat is not set in input
+
+	signed, err := SignEd25519(env, payload, priv, true)
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+	}
+	if signed.Iat == nil {
+		t.Fatalf("iat should be set")
+	}
+
+	if err := VerifyEd25519(signed, pub); err != nil {
+		t.Fatalf("verify sig: %v", err)
+	}
+}
+
+func TestV1_Verify_IatTampered_Fails(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	payload := []byte(`{"a":1,"b":2}`)
+	env := baseEnvelopeJCS()
+
+	signed, err := SignEd25519(env, payload, priv, true)
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+	}
+	if signed.Iat == nil {
+		t.Fatalf("iat should be set")
+	}
+
+	// Tamper iat
+	v := *signed.Iat
+	v++
+	signed.Iat = &v
+
+	if err := VerifyEd25519(signed, pub); err == nil {
+		t.Fatalf("want verify failure after tampering iat, got nil")
 	}
 }

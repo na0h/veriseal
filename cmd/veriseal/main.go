@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/na0h/veriseal/canonical"
 	"github.com/na0h/veriseal/core"
@@ -30,8 +31,8 @@ type command struct {
 func main() {
 	cmds := []command{
 		{name: "canon", run: runCanon, help: "Canonicalize JSON input using JCS."},
-		{name: "envelope", run: runEnvelope, help: "Print an Envelope v1 JSON template."},
-		{name: "sign", run: runSign, help: "Sign an envelope (Sig empty) with Ed25519 using a payload file."},
+		{name: "init", run: runInit, help: "Print an Envelope v1 JSON template."},
+		{name: "sign", run: runSign, help: "Sign an envelope template with Ed25519 using a payload file."},
 		{name: "verify", run: runVerify, help: "Verify Ed25519 signature and optionally verify payload_hash using a payload file."},
 		{name: "version", run: runVersion, help: "Print veriseal version."},
 	}
@@ -101,27 +102,31 @@ func runVersion(args []string) error {
 	return nil
 }
 
-// Envelope template
-func runEnvelope(args []string) error {
-	fs := flag.NewFlagSet("envelope", flag.ContinueOnError)
+func runInit(args []string) error {
+	fs := flag.NewFlagSet("init", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
-	kid := fs.String("kid", "", "key id (optional)")
+	kid := fs.String("kid", "", "key id")
 	payloadEncoding := fs.String("payload-encoding", core.V1PayloadEncodingJCS, "payload encoding: JCS or raw")
 	outPath := fs.String("output", "", "output file path (default: stdout)")
 
 	if err := parseFlags(fs, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
-			printEnvelopeUsage(os.Stdout)
+			printInitUsage(os.Stdout)
 			return nil
 		}
-		printEnvelopeUsage(os.Stderr)
+		printInitUsage(os.Stderr)
 		return err
+	}
+
+	if strings.TrimSpace(*kid) == "" {
+		printInitUsage(os.Stderr)
+		return fmt.Errorf("--kid is required")
 	}
 
 	enc := *payloadEncoding
 	if enc != core.V1PayloadEncodingJCS && enc != core.V1PayloadEncodingRaw {
-		printEnvelopeUsage(os.Stderr)
+		printInitUsage(os.Stderr)
 		return fmt.Errorf("invalid --payload-encoding: %s", enc)
 	}
 
@@ -131,8 +136,6 @@ func runEnvelope(args []string) error {
 		Kid:             *kid,
 		PayloadEncoding: enc,
 		PayloadHashAlg:  core.V1PayloadHashAlgSHA256,
-		PayloadHash:     "",
-		Sig:             "",
 	}
 
 	out, err := json.MarshalIndent(env, "", "  ")
@@ -143,11 +146,11 @@ func runEnvelope(args []string) error {
 	return writeOutput(*outPath, out)
 }
 
-func printEnvelopeUsage(w io.Writer) {
-	fmt.Fprintln(w, "usage: veriseal envelope [options]")
+func printInitUsage(w io.Writer) {
+	fmt.Fprintln(w, "usage: veriseal init [options]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "options:")
-	fmt.Fprintln(w, "  --kid              key id (optional)")
+	fmt.Fprintln(w, "  --kid              key id")
 	fmt.Fprintln(w, "  --payload-encoding payload encoding: JCS or raw (default: JCS)")
 	fmt.Fprintln(w, "  --output           output file path (default: stdout)")
 }
@@ -200,6 +203,7 @@ func runSign(args []string) error {
 	inPath := fs.String("input", "", "input envelope JSON file path")
 	outPath := fs.String("output", "", "output file path (default: stdout)")
 	payloadFile := fs.String("payload-file", "", "payload file path")
+	setIat := fs.Bool("set-iat", false, "set iat (epoch seconds) right before signing")
 
 	if err := parseFlags(fs, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -243,9 +247,19 @@ func runSign(args []string) error {
 		return err
 	}
 
-	signed, err := core.SignEd25519(envelope, payloadBytes, priv)
+	signed, err := core.SignEd25519(envelope, payloadBytes, priv, *setIat)
 	if err != nil {
 		return err
+	}
+
+	if *setIat && envelope.Iat != nil {
+		old := *envelope.Iat
+		fmt.Fprintf(
+			os.Stderr,
+			"WARN: iat overwritten (old=%d, new=%d)\n",
+			old,
+			*signed.Iat,
+		)
 	}
 
 	out, err := json.MarshalIndent(signed, "", "  ")
@@ -261,10 +275,11 @@ func printSignUsage(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "required:")
 	fmt.Fprintln(w, "  --privkey       path to ed25519 private key (PKCS#8 PEM)")
-	fmt.Fprintln(w, "  --input         envelope JSON file (Sig should be empty)")
+	fmt.Fprintln(w, "  --input         envelope template JSON file")
 	fmt.Fprintln(w, "  --payload-file  payload file path")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "options:")
+	fmt.Fprintln(w, "  --set-iat       set iat (epoch seconds) right before signing")
 	fmt.Fprintln(w, "  --output        output file path (default: stdout)")
 }
 

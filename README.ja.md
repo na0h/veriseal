@@ -19,6 +19,20 @@ VeriSeal は「データそのもの」ではなく、**データが改ざんさ
 
 ## Envelope v1
 
+### 著名前テンプレート
+
+```json
+{
+  "v": 1,
+  "alg": "Ed25519",
+  "kid": "demo-1",
+  "payload_encoding": "JCS",
+  "payload_hash_alg": "SHA-256"
+}
+```
+
+### 署名済み
+
 ```json
 {
   "v": 1,
@@ -42,6 +56,10 @@ VeriSeal は「データそのもの」ではなく、**データが改ざんさ
 
 - `kid`
   - 鍵識別子（Key ID）
+
+- `iat`
+  - 著名発行日時（UNIX時間）
+  - Optional
 
 - `payload_encoding`
   - payload の正規化方法
@@ -80,15 +98,13 @@ VeriSeal は「データそのもの」ではなく、**データが改ざんさ
 
 ## CLI
 
-### envelope
+### init
 
 **Envelope v1 の JSON テンプレート**を出力します。
 
 ```sh
-veriseal envelope --kid demo-1 --payload-encoding JSC --output envelope.json
+veriseal init --kid demo-1 --payload-encoding JSC --output envelope.template.json
 ```
-
-生成されるテンプレートでは、`payload_hash`と`sig`は空になっています。これらのフィールドは、後続の`sign`コマンドによって設定されます。
 
 ```json
 {
@@ -96,9 +112,7 @@ veriseal envelope --kid demo-1 --payload-encoding JSC --output envelope.json
   "alg": "Ed25519",
   "kid": "demo-1",
   "payload_encoding": "JCS",
-  "payload_hash_alg": "SHA-256",
-  "payload_hash": "",
-  "sig": ""
+  "payload_hash_alg": "SHA-256"
 }
 ```
 
@@ -109,10 +123,22 @@ payload を読み込み、Envelope に署名します。
 ```sh
 veriseal sign \
   --privkey privkey.pem \
-  --input envelope.json \
+  --input envelope.template.json \
   --payload-file payload.json \
   --output envelope.signed.json
 ```
+
+`iat`: 著名発行日時（UNIX時間）をつける場合は、`--set-iat`を指定します。
+
+```sh
+veriseal sign \
+  --privkey privkey.pem \
+  --input envelope.template.json \
+  --payload-file payload.json \
+  --output envelope.signed.json \
+  --set-iat
+```
+
 
 ### verify
 

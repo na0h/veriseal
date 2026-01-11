@@ -21,6 +21,18 @@ VeriSeal does not handle the data itself. Instead, it handles **metadata that en
 
 ## Envelope v1
 
+**Unsigned template**
+```json
+{
+  "v": 1,
+  "alg": "Ed25519",
+  "kid": "demo-1",
+  "payload_encoding": "JCS",
+  "payload_hash_alg": "SHA-256"
+}
+```
+
+**Signed envelope**
 ```json
 {
   "v": 1,
@@ -44,6 +56,11 @@ VeriSeal does not handle the data itself. Instead, it handles **metadata that en
 
 - `kid`
   - Key identifier (Key ID)
+
+- `iat`
+  - Issued At (UNIX time, seconds)
+  - Optional
+  - Included in the signature when present
 
 - `payload_encoding`
   - Normalization method applied to the payload
@@ -83,15 +100,13 @@ Verification of `payload_hash` and verification of the signature are independent
 
 ## CLI
 
-### envelope
+### init
 
 Prints an **Envelope v1 JSON template**.
 
 ```sh
-veriseal envelope --kid demo-1 --payload-encoding JSC --output envelope.json
+veriseal init --kid demo-1 --payload-encoding JCS --output envelope.template.json
 ```
-
-The generated template contains empty `payload_hash` and `sig` fields, which are filled by the `sign` command.
 
 ```json
 {
@@ -99,9 +114,7 @@ The generated template contains empty `payload_hash` and `sig` fields, which are
   "alg": "Ed25519",
   "kid": "demo-1",
   "payload_encoding": "JCS",
-  "payload_hash_alg": "SHA-256",
-  "payload_hash": "",
-  "sig": ""
+  "payload_hash_alg": "SHA-256"
 }
 ```
 
@@ -112,9 +125,23 @@ Reads a payload and signs an Envelope.
 ```sh
 veriseal sign \
   --privkey privkey.pem \
-  --input envelope.json \
+  --input envelope.template.json \
   --payload-file payload.json \
   --output envelope.signed.json
+```
+
+To attach an issuance timestamp (`iat`, UNIX time), specify `--set-iat`.
+
+```sh
+veriseal sign \
+  --privkey privkey.pem \
+  --input envelope.template.json \
+  --payload-file payload.json \
+  --output envelope.signed.json \
+  --set-iat
+```
+
+If the input already contains `iat`, it will be overwritten and a warning will be printed.
 ```
 
 ### verify
