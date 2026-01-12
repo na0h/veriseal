@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/na0h/veriseal/canonical"
 	"github.com/na0h/veriseal/core"
@@ -32,6 +31,7 @@ func main() {
 	cmds := []command{
 		{name: "canon", run: runCanon, help: "Canonicalize JSON input using JCS."},
 		{name: "init", run: runInit, help: "Print an Envelope v1 JSON template."},
+		{name: "ts", run: runTS, help: "Timeseries helpers (init/next/check/audit)."},
 		{name: "sign", run: runSign, help: "Sign an envelope template with Ed25519 using a payload file."},
 		{name: "verify", run: runVerify, help: "Verify Ed25519 signature and optionally verify payload_hash using a payload file."},
 		{name: "version", run: runVersion, help: "Print veriseal version."},
@@ -119,23 +119,9 @@ func runInit(args []string) error {
 		return err
 	}
 
-	if strings.TrimSpace(*kid) == "" {
-		printInitUsage(os.Stderr)
-		return fmt.Errorf("--kid is required")
-	}
-
-	enc := *payloadEncoding
-	if enc != core.V1PayloadEncodingJCS && enc != core.V1PayloadEncodingRaw {
-		printInitUsage(os.Stderr)
-		return fmt.Errorf("invalid --payload-encoding: %s", enc)
-	}
-
-	env := core.Envelope{
-		V:               core.Version1,
-		Alg:             core.V1AlgEd25519,
-		Kid:             *kid,
-		PayloadEncoding: enc,
-		PayloadHashAlg:  core.V1PayloadHashAlgSHA256,
+	env, err := core.NewEnvelopeTemplateV1(*kid, *payloadEncoding)
+	if err != nil {
+		return err
 	}
 
 	out, err := json.MarshalIndent(env, "", "  ")
@@ -148,6 +134,70 @@ func runInit(args []string) error {
 
 func printInitUsage(w io.Writer) {
 	fmt.Fprintln(w, "usage: veriseal init [options]")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "options:")
+	fmt.Fprintln(w, "  --kid              key id")
+	fmt.Fprintln(w, "  --payload-encoding payload encoding: JCS or raw (default: JCS)")
+	fmt.Fprintln(w, "  --output           output file path (default: stdout)")
+}
+
+func runTS(args []string) error {
+	if len(args) == 0 || isHelpArg(args[0]) {
+		printTSUsage(os.Stdout)
+		return nil
+	}
+
+	sub := args[0]
+	switch sub {
+	case "init":
+		return runTSInit(args[1:])
+	default:
+		printTSUsage(os.Stderr)
+		return fmt.Errorf("unknown ts subcommand: %s", sub)
+	}
+}
+
+func printTSUsage(w io.Writer) {
+	fmt.Fprintln(w, "usage: veriseal ts <subcommand> [options]")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "subcommands:")
+	fmt.Fprintln(w, "  init   Start a new timeseries session and print an Envelope v1 JSON template.")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "run 'veriseal ts <subcommand> -h' for subcommand-specific options")
+}
+
+func runTSInit(args []string) error {
+	fs := flag.NewFlagSet("ts init", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+
+	kid := fs.String("kid", "", "key id")
+	payloadEncoding := fs.String("payload-encoding", core.V1PayloadEncodingJCS, "payload encoding: JCS or raw")
+	outPath := fs.String("output", "", "output file path (default: stdout)")
+
+	if err := parseFlags(fs, args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			printTSInitUsage(os.Stdout)
+			return nil
+		}
+		printTSInitUsage(os.Stderr)
+		return err
+	}
+
+	env, err := core.NewTimeseriesEnvelopeTemplateV1(*kid, *payloadEncoding)
+	if err != nil {
+		return err
+	}
+
+	out, err := json.MarshalIndent(env, "", "  ")
+	if err != nil {
+		return err
+	}
+	out = append(out, '\n')
+	return writeOutput(*outPath, out)
+}
+
+func printTSInitUsage(w io.Writer) {
+	fmt.Fprintln(w, "usage: veriseal ts init [options]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "options:")
 	fmt.Fprintln(w, "  --kid              key id")

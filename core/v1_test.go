@@ -3,6 +3,7 @@ package core
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -370,5 +371,47 @@ func TestV1_Verify_IatTampered_Fails(t *testing.T) {
 
 	if err := VerifyEd25519(signed, pub); err == nil {
 		t.Fatalf("want verify failure after tampering iat, got nil")
+	}
+}
+
+func TestV1_NewTimeseriesEnvelopeTemplateV1_OK(t *testing.T) {
+	env, err := NewTimeseriesEnvelopeTemplateV1("demo-1", V1PayloadEncodingJCS)
+	if err != nil {
+		t.Fatalf("NewTimeseriesEnvelopeTemplateV1: %v", err)
+	}
+
+	if env.V != Version1 {
+		t.Fatalf("v mismatch: got %d", env.V)
+	}
+	if env.Alg != V1AlgEd25519 {
+		t.Fatalf("alg mismatch: got %q", env.Alg)
+	}
+	if env.Kid != "demo-1" {
+		t.Fatalf("kid mismatch: got %q", env.Kid)
+	}
+	if env.PayloadEncoding != V1PayloadEncodingJCS {
+		t.Fatalf("payload_encoding mismatch: got %q", env.PayloadEncoding)
+	}
+	if env.PayloadHashAlg != V1PayloadHashAlgSHA256 {
+		t.Fatalf("payload_hash_alg mismatch: got %q", env.PayloadHashAlg)
+	}
+
+	if env.TsSessionID == nil || *env.TsSessionID == "" {
+		t.Fatalf("ts_session_id should be set")
+	}
+	uuidRe := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+	if !uuidRe.MatchString(*env.TsSessionID) {
+		t.Fatalf("ts_session_id should look like uuid v4, got %q", *env.TsSessionID)
+	}
+
+	if env.TsSeq == nil {
+		t.Fatalf("ts_seq should be set")
+	}
+	if *env.TsSeq != 0 {
+		t.Fatalf("ts_seq should be 0, got %d", *env.TsSeq)
+	}
+
+	if env.TsPrev != nil {
+		t.Fatalf("ts_prev must be omitted for seq=0, got %v", *env.TsPrev)
 	}
 }
