@@ -1,6 +1,6 @@
 # VeriSeal
 
-VeriSeal は、署名とハッシュにより **検証可能なデータ（Verifiable Data）** を扱うための最小ツールキットです。
+VeriSeal は、署名とハッシュにより 検証可能なデータ（Verifiable Data） を扱うための最小ツールキットです。
 
 ## License
 
@@ -10,10 +10,10 @@ Apache License 2.0
 
 ## コンセプト
 
-VeriSeal は「データそのもの」ではなく、**データが改ざんされていないことを検証可能にするためのメタ情報**を扱います。
+VeriSeal は「データそのもの」ではなく、データが改ざんされていないことを検証可能にするためのメタ情報を扱います。
 
 - Envelope は payload のハッシュと署名のみを保持する
-- payload は検証時に **外部から与える**
+- payload は検証時に外部から与える
 
 ---
 
@@ -58,7 +58,7 @@ VeriSeal は「データそのもの」ではなく、**データが改ざんさ
   - 鍵識別子（Key ID）
 
 - `iat`
-  - 著名発行日時（UNIX時間）
+  - 署名発行日時（UNIX時間）
   - Optional
 
 - `payload_encoding`
@@ -73,6 +73,24 @@ VeriSeal は「データそのもの」ではなく、**データが改ざんさ
 
 - `sig`
   - 署名値（Base64）
+
+#### Timeseries（Optional）
+
+- `ts_session_id`
+  - 連続性の単位を表す識別子（UUID）
+  - Optional
+
+- `ts_seq`
+  - `ts_session_id` 内での連番
+  - 非負整数（推奨: uint64）
+  - `ts_session_id` 内で単調増加する
+  - overflow 等で継続できない場合はエラーとする
+  - `ts_seq = 0` の場合、`ts_prev` は存在してはならない
+
+- `ts_prev`
+  - 直前の Envelope から `sig` フィールドを除外したEnvelope JSON に対する SHA-256 ハッシュの Base64 表現
+  - Optional
+  - `ts_seq > 0` の場合は必須
 
 ---
 
@@ -100,10 +118,10 @@ VeriSeal は「データそのもの」ではなく、**データが改ざんさ
 
 ### init
 
-**Envelope v1 の JSON テンプレート**を出力します。
+- Envelope v1 の JSON テンプレートを出力します。
 
 ```sh
-veriseal init --kid demo-1 --payload-encoding JSC --output envelope.template.json
+veriseal init --kid demo-1 --payload-encoding JCS --output envelope.template.json
 ```
 
 ```json
@@ -118,7 +136,7 @@ veriseal init --kid demo-1 --payload-encoding JSC --output envelope.template.jso
 
 ### sign
 
-payload を読み込み、Envelope に署名します。
+- payload を読み込み、Envelope に署名します。
 
 ```sh
 veriseal sign \
@@ -128,7 +146,7 @@ veriseal sign \
   --output envelope.signed.json
 ```
 
-`iat`: 著名発行日時（UNIX時間）をつける場合は、`--set-iat`を指定します。
+- `iat`: 著名発行日時（UNIX時間）をつける場合は、`--set-iat`を指定します。
 
 ```sh
 veriseal sign \
@@ -142,7 +160,7 @@ veriseal sign \
 
 ### verify
 
-署名検証を行います。payload を指定した場合は payload_hash も検証します。
+- 署名検証を行います。payload を指定した場合は payload_hash も検証します。
 
 ```sh
 veriseal verify \
@@ -154,6 +172,67 @@ veriseal verify \
   --input envelope.signed.json \
   --payload-file payload.json
 ```
+
+### Timeseries
+
+Timeseries は、Envelope の連続性（欠落・並び替え・分岐）を検証可能にするための補助コマンドです。
+
+#### ts init
+
+- 新しい timeseries セッションを開始します。
+
+```sh
+veriseal ts init \
+  --kid demo-1 \
+  --payload-encoding JCS \
+  --output envelope.template.json
+```
+
+- 新しい `ts_session_id` を生成します
+- `ts_seq = 0` を設定します
+- `ts_prev` は設定されません
+- 署名前の Envelope テンプレートを出力します
+
+#### ts next
+
+- 直前の署名済み Envelope を元に、次の Envelope テンプレートを生成します。
+
+```sh
+veriseal ts next \
+  --prev envelope.prev.signed.json \
+  --output envelope.template.json
+```
+
+- `ts_session_id` は前の Envelope から継承されます
+- `ts_seq = prev.ts_seq + 1`
+- `ts_prev` は、直前の unsigned Envelope に対するHA-256 ハッシュ（Base64）として計算されます
+- 署名前の Envelope テンプレートを出力します
+
+#### ts check
+
+- 2つの Envelope 間の連続性を確認します。
+- 主に ingest 時の即時チェック用途を想定しています。
+
+```sh
+veriseal ts check \
+  --prev prev.signed.json \
+  --current current.signed.json
+```
+
+#### ts audit
+
+- 複数の Envelope を入力として、連続性のみを検証します。
+- 署名検証や payload 検証は行いません。
+
+```sh
+veriseal ts audit \
+  --input envelopes.jsonl
+```
+
+検証内容：
+- `ts_session_id` が一貫していること
+- `ts_seq` が 0 から単調増加していること
+- `ts_prev` が直前の Envelope と一致していること
 
 ---
 
