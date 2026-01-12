@@ -557,3 +557,85 @@ func TestV1_CheckTimeseriesLinkV1_SeqMismatch(t *testing.T) {
 		t.Fatalf("want error, got nil")
 	}
 }
+
+func TestV1_AuditTimeseriesV1_OK(t *testing.T) {
+	e0, err := NewTimeseriesEnvelopeTemplateV1("demo-1", V1PayloadEncodingJCS)
+	if err != nil {
+		t.Fatalf("NewTimeseriesEnvelopeTemplateV1: %v", err)
+	}
+
+	e0.PayloadHash = "dummyhash"
+	sig := "dummy"
+	e0.Sig = &sig
+
+	e1, err := NextTimeseriesEnvelopeTemplateV1(e0)
+	if err != nil {
+		t.Fatalf("NextTimeseriesEnvelopeTemplateV1(e0): %v", err)
+	}
+	e1.PayloadHash = "dummyhash1"
+	e1.Sig = &sig
+
+	e2, err := NextTimeseriesEnvelopeTemplateV1(e1)
+	if err != nil {
+		t.Fatalf("NextTimeseriesEnvelopeTemplateV1(e1): %v", err)
+	}
+
+	if err := AuditTimeseriesV1([]Envelope{e0, e1, e2}, false); err != nil {
+		t.Fatalf("AuditTimeseriesV1: %v", err)
+	}
+
+	// strict-start でも通る（e0 は seq=0, ts_prev=nil のはず）
+	if err := AuditTimeseriesV1([]Envelope{e0, e1, e2}, true); err != nil {
+		t.Fatalf("AuditTimeseriesV1(strict): %v", err)
+	}
+}
+
+func TestV1_AuditTimeseriesV1_FailAtIndex(t *testing.T) {
+	e0, _ := NewTimeseriesEnvelopeTemplateV1("demo-1", V1PayloadEncodingJCS)
+	sig := "dummy"
+	e0.Sig = &sig
+	e0.PayloadHash = "dummyhash"
+
+	e1, _ := NextTimeseriesEnvelopeTemplateV1(e0)
+	bad := "broken"
+	e1.TsPrev = &bad
+
+	err := AuditTimeseriesV1([]Envelope{e0, e1}, false)
+	if err == nil {
+		t.Fatalf("want error, got nil")
+	}
+	if !strings.Contains(err.Error(), "index 1") {
+		t.Fatalf("want error containing %q, got %v", "index 1", err)
+	}
+}
+
+func TestV1_AuditTimeseriesV1_AllowsNonZeroStartWhenNotStrict(t *testing.T) {
+	e0, _ := NewTimeseriesEnvelopeTemplateV1("demo-1", V1PayloadEncodingJCS)
+	e0.PayloadHash = "dummyhash"
+	sig := "dummy"
+	e0.Sig = &sig
+
+	e1, _ := NextTimeseriesEnvelopeTemplateV1(e0)
+	e1.PayloadHash = "dummyhash1"
+	e1.Sig = &sig
+
+	seq10 := uint64(10)
+	e0.TsSeq = &seq10
+
+	seq11 := uint64(11)
+	e1.TsSeq = &seq11
+
+	h, err := UnsignedHashV1(e0)
+	if err != nil {
+		t.Fatalf("UnsignedHashV1: %v", err)
+	}
+	e1.TsPrev = &h
+
+	if err := AuditTimeseriesV1([]Envelope{e0, e1}, false); err != nil {
+		t.Fatalf("want OK, got %v", err)
+	}
+
+	if err := AuditTimeseriesV1([]Envelope{e0, e1}, true); err == nil {
+		t.Fatalf("want error in strict mode, got nil")
+	}
+}

@@ -99,3 +99,11 @@ func printTSCheckUsage(w io.Writer) {
 	fmt.Fprintln(w, "  --prev    previous signed envelope JSON file")
 	fmt.Fprintln(w, "  --curr    current signed envelope JSON file")
 }
+
+func printTSAuditUsage(w io.Writer) {
+	fmt.Fprintln(w, "usage: veriseal ts audit [options]")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "options:")
+	fmt.Fprintln(w, "  --input    input JSONL file (signed envelopes)")
+	fmt.Fprintln(w, "  --strict-start  require ts_seq=0 and empty ts_prev on the first line")
+}

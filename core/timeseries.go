@@ -79,3 +79,35 @@ func CheckTimeseriesLinkV1(prev, curr Envelope) error {
 
 	return nil
 }
+
+func AuditTimeseriesV1(envelopes []Envelope, strictStart bool) error {
+	if len(envelopes) == 0 {
+		return fmt.Errorf("empty input")
+	}
+
+	first := envelopes[0]
+	if first.TsSessionID == nil || *first.TsSessionID == "" {
+		return fmt.Errorf("index 0: missing ts_session_id")
+	}
+	if first.TsSeq == nil {
+		return fmt.Errorf("index 0: missing ts_seq")
+	}
+
+	if strictStart {
+		if *first.TsSeq != 0 {
+			return fmt.Errorf("index 0: ts_seq must start from 0")
+		}
+		if first.TsPrev != nil {
+			return fmt.Errorf("index 0: ts_prev must be empty")
+		}
+	}
+
+	for i := 1; i < len(envelopes); i++ {
+		prev := envelopes[i-1]
+		curr := envelopes[i]
+		if err := CheckTimeseriesLinkV1(prev, curr); err != nil {
+			return fmt.Errorf("index %d: %w", i, err)
+		}
+	}
+	return nil
+}
