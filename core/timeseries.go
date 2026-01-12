@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 
 	"github.com/na0h/veriseal/canonical"
 )
@@ -49,4 +50,32 @@ func NextTimeseriesEnvelopeTemplateV1(prev Envelope) (Envelope, error) {
 
 	next.Iat = nil
 	return next, nil
+}
+
+func CheckTimeseriesLinkV1(prev, curr Envelope) error {
+	if err := ValidateTimeseriesPrevForNext(prev); err != nil {
+		return fmt.Errorf("prev invalid: %w", err)
+	}
+
+	if err := ValidateTimeseriesCurrForCheck(curr); err != nil {
+		return fmt.Errorf("curr invalid: %w", err)
+	}
+
+	if *curr.TsSessionID != *prev.TsSessionID {
+		return fmt.Errorf("ts_session_id mismatch")
+	}
+
+	if *curr.TsSeq != *prev.TsSeq+1 {
+		return fmt.Errorf("ts_seq mismatch: want %d, got %d", *prev.TsSeq+1, *curr.TsSeq)
+	}
+
+	wantPrev, err := UnsignedHashV1(prev)
+	if err != nil {
+		return err
+	}
+	if *curr.TsPrev != wantPrev {
+		return fmt.Errorf("ts_prev mismatch")
+	}
+
+	return nil
 }

@@ -68,8 +68,9 @@ func printTSUsage(w io.Writer) {
 	fmt.Fprintln(w, "usage: veriseal ts <subcommand> [options]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "subcommands:")
-	fmt.Fprintln(w, "  init   Start a new timeseries session and print an Envelope v1 JSON template.")
-	fmt.Fprintln(w, "  next   Generate next timeseries envelope template from a previous signed envelope.")
+	fmt.Fprintln(w, "  init    Start a new timeseries session and print an Envelope v1 JSON template.")
+	fmt.Fprintln(w, "  next    Generate next timeseries envelope template from a previous signed envelope.")
+	fmt.Fprintln(w, "  check   Check linkage between two timeseries envelopes.")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "run 'veriseal ts <subcommand> -h' for subcommand-specific options")
 }
@@ -89,4 +90,12 @@ func printTSNextUsage(w io.Writer) {
 	fmt.Fprintln(w, "options:")
 	fmt.Fprintln(w, "  --prev     input signed envelope JSON file (previous)")
 	fmt.Fprintln(w, "  --output   output file path (default: stdout)")
+}
+
+func printTSCheckUsage(w io.Writer) {
+	fmt.Fprintln(w, "usage: veriseal ts check [options]")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "options:")
+	fmt.Fprintln(w, "  --prev    previous signed envelope JSON file")
+	fmt.Fprintln(w, "  --curr    current signed envelope JSON file")
 }

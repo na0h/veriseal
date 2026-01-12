@@ -53,3 +53,19 @@ func ValidateTimeseriesPrevForNext(prev Envelope) error {
 	}
 	return nil
 }
+
+func ValidateTimeseriesCurrForCheck(curr Envelope) error {
+	if curr.V != Version1 {
+		return fmt.Errorf("unsupported v: %d", curr.V)
+	}
+	if curr.TsSessionID == nil || *curr.TsSessionID == "" {
+		return fmt.Errorf("missing ts_session_id")
+	}
+	if curr.TsSeq == nil {
+		return fmt.Errorf("missing ts_seq")
+	}
+	if curr.TsPrev == nil || *curr.TsPrev == "" {
+		return fmt.Errorf("missing ts_prev")
+	}
+	return nil
+}

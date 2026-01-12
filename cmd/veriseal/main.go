@@ -90,6 +90,8 @@ func runTS(args []string) error {
 		return runTSInit(args[1:])
 	case "next":
 		return runTSNext(args[1:])
+	case "check":
+		return runTSCheck(args[1:])
 	default:
 		printTSUsage(os.Stderr)
 		return fmt.Errorf("unknown ts subcommand: %s", sub)

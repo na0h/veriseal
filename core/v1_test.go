@@ -501,3 +501,59 @@ func TestV1_ValidateTimeseriesPrevForNext_Overflow(t *testing.T) {
 		t.Fatalf("want overflow error, got nil")
 	}
 }
+
+func TestV1_CheckTimeseriesLinkV1_OK(t *testing.T) {
+	prev, err := NewTimeseriesEnvelopeTemplateV1("demo-1", V1PayloadEncodingJCS)
+	if err != nil {
+		t.Fatalf("NewTimeseriesEnvelopeTemplateV1: %v", err)
+	}
+
+	// prev の unsigned hash 計算に入る要素を適当に埋める
+	prev.PayloadHash = "dummyhash"
+	sig := "dummy"
+	prev.Sig = &sig
+
+	curr, err := NextTimeseriesEnvelopeTemplateV1(prev)
+	if err != nil {
+		t.Fatalf("NextTimeseriesEnvelopeTemplateV1: %v", err)
+	}
+
+	if err := CheckTimeseriesLinkV1(prev, curr); err != nil {
+		t.Fatalf("CheckTimeseriesLinkV1: %v", err)
+	}
+}
+
+func TestV1_CheckTimeseriesLinkV1_TsPrevMismatch(t *testing.T) {
+	prev, err := NewTimeseriesEnvelopeTemplateV1("demo-1", V1PayloadEncodingJCS)
+	if err != nil {
+		t.Fatalf("NewTimeseriesEnvelopeTemplateV1: %v", err)
+	}
+	prev.PayloadHash = "dummyhash"
+	sig := "dummy"
+	prev.Sig = &sig
+
+	curr, err := NextTimeseriesEnvelopeTemplateV1(prev)
+	if err != nil {
+		t.Fatalf("NextTimeseriesEnvelopeTemplateV1: %v", err)
+	}
+
+	bad := "not-the-right-hash"
+	curr.TsPrev = &bad
+
+	if err := CheckTimeseriesLinkV1(prev, curr); err == nil {
+		t.Fatalf("want error, got nil")
+	}
+}
+
+func TestV1_CheckTimeseriesLinkV1_SeqMismatch(t *testing.T) {
+	prev, _ := NewTimeseriesEnvelopeTemplateV1("demo-1", V1PayloadEncodingJCS)
+	prev.PayloadHash = "dummyhash"
+
+	curr, _ := NextTimeseriesEnvelopeTemplateV1(prev)
+	seq := uint64(999)
+	curr.TsSeq = &seq
+
+	if err := CheckTimeseriesLinkV1(prev, curr); err == nil {
+		t.Fatalf("want error, got nil")
+	}
+}
