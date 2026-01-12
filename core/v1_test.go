@@ -3,6 +3,7 @@ package core
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"math"
 	"regexp"
 	"strings"
 	"testing"
@@ -149,7 +150,7 @@ func TestV1_Verify_RawVsJCS_Mismatch_Fail(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Same semantic JSON, but raw vs JCS normalization must not be mixed.
+	// Same semantic JSON, but raw vs jcs normalization must not be mixed.
 	rawPayload := []byte(`{"a":1,"b":2}`)
 	jcsPayload := []byte(`{"b":2,"a":1}`)
 
@@ -159,7 +160,7 @@ func TestV1_Verify_RawVsJCS_Mismatch_Fail(t *testing.T) {
 		t.Fatalf("sign: %v", err)
 	}
 
-	// Verify payload hash with JCS payload must fail because encoding differs.
+	// Verify payload hash with jcs payload must fail because encoding differs.
 	if err := VerifyPayloadHash(signed, jcsPayload); err == nil {
 		t.Fatalf("want payload hash mismatch, got nil")
 	}
@@ -413,5 +414,90 @@ func TestV1_NewTimeseriesEnvelopeTemplateV1_OK(t *testing.T) {
 
 	if env.TsPrev != nil {
 		t.Fatalf("ts_prev must be omitted for seq=0, got %v", *env.TsPrev)
+	}
+}
+
+func TestV1_NextTimeseriesEnvelopeTemplateV1_OK(t *testing.T) {
+	prev, err := NewTimeseriesEnvelopeTemplateV1("demo-1", V1PayloadEncodingJCS)
+	if err != nil {
+		t.Fatalf("NewTimeseriesEnvelopeTemplateV1: %v", err)
+	}
+
+	sig := "dummy"
+	prev.Sig = &sig
+	prev.PayloadHash = "dummyhash"
+
+	next, err := NextTimeseriesEnvelopeTemplateV1(prev)
+	if err != nil {
+		t.Fatalf("NextTimeseriesEnvelopeTemplateV1: %v", err)
+	}
+
+	if next.TsSessionID == nil || prev.TsSessionID == nil || *next.TsSessionID != *prev.TsSessionID {
+		t.Fatalf("ts_session_id should be inherited")
+	}
+	if next.TsSeq == nil || prev.TsSeq == nil || *next.TsSeq != *prev.TsSeq+1 {
+		t.Fatalf("ts_seq should increment")
+	}
+	if next.TsPrev == nil || *next.TsPrev == "" {
+		t.Fatalf("ts_prev should be set")
+	}
+	if next.Sig != nil {
+		t.Fatalf("next template must not include sig")
+	}
+	if next.PayloadHash != "" {
+		t.Fatalf("next template must not include payload_hash")
+	}
+}
+
+func TestV1_NextTimeseriesEnvelopeTemplateV1_PrevHashIsIndependentOfSig(t *testing.T) {
+	prev, _ := NewTimeseriesEnvelopeTemplateV1("demo-1", V1PayloadEncodingJCS)
+	prev.PayloadHash = "dummyhash"
+
+	sig1 := "sig1"
+	prev.Sig = &sig1
+	next1, err := NextTimeseriesEnvelopeTemplateV1(prev)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sig2 := "sig2"
+	prev.Sig = &sig2
+	next2, err := NextTimeseriesEnvelopeTemplateV1(prev)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if *next1.TsPrev != *next2.TsPrev {
+		t.Fatalf("ts_prev must not depend on sig")
+	}
+}
+
+func TestV1_NextTimeseriesEnvelopeTemplateV1_PrevHashDependsOnPayloadHash(t *testing.T) {
+	prev, _ := NewTimeseriesEnvelopeTemplateV1("demo-1", V1PayloadEncodingJCS)
+
+	prev.PayloadHash = "h1"
+	next1, err := NextTimeseriesEnvelopeTemplateV1(prev)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	prev.PayloadHash = "h2"
+	next2, err := NextTimeseriesEnvelopeTemplateV1(prev)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if *next1.TsPrev == *next2.TsPrev {
+		t.Fatalf("ts_prev must depend on payload_hash")
+	}
+}
+
+func TestV1_ValidateTimeseriesPrevForNext_Overflow(t *testing.T) {
+	prev, _ := NewTimeseriesEnvelopeTemplateV1("demo-1", V1PayloadEncodingJCS)
+	max := uint64(math.MaxUint64)
+	prev.TsSeq = &max
+
+	if err := ValidateTimeseriesPrevForNext(prev); err == nil {
+		t.Fatalf("want overflow error, got nil")
 	}
 }

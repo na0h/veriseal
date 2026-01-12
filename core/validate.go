@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"math"
 )
 
 func ValidateEnvelopeV1(envelope Envelope) error {
@@ -33,6 +34,22 @@ func ValidateEnvelopeV1ForVerify(envelope Envelope) error {
 	sig := envelope.Sig
 	if sig == nil || *sig == "" {
 		return fmt.Errorf("missing sig")
+	}
+	return nil
+}
+
+func ValidateTimeseriesPrevForNext(prev Envelope) error {
+	if prev.V != Version1 {
+		return fmt.Errorf("unsupported v: %d", prev.V)
+	}
+	if prev.TsSessionID == nil || *prev.TsSessionID == "" {
+		return fmt.Errorf("missing ts_session_id in previous envelope")
+	}
+	if prev.TsSeq == nil {
+		return fmt.Errorf("missing ts_seq in previous envelope")
+	}
+	if *prev.TsSeq == math.MaxUint64 {
+		return fmt.Errorf("ts_seq overflow: reached max uint64")
 	}
 	return nil
 }

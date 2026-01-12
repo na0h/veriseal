@@ -88,6 +88,8 @@ func runTS(args []string) error {
 	switch sub {
 	case "init":
 		return runTSInit(args[1:])
+	case "next":
+		return runTSNext(args[1:])
 	default:
 		printTSUsage(os.Stderr)
 		return fmt.Errorf("unknown ts subcommand: %s", sub)

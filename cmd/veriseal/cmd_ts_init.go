@@ -15,7 +15,7 @@ func runTSInit(args []string) error {
 	fs.SetOutput(io.Discard)
 
 	kid := fs.String("kid", "", "key id")
-	payloadEncoding := fs.String("payload-encoding", core.V1PayloadEncodingJCS, "payload encoding: JCS or raw")
+	payloadEncoding := fs.String("payload-encoding", core.V1PayloadEncodingJCS, "payload encoding: jcs or raw")
 	outPath := fs.String("output", "", "output file path (default: stdout)")
 
 	if err := parseFlags(fs, args); err != nil {

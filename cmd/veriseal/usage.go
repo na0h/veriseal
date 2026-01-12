@@ -27,7 +27,7 @@ func printInitUsage(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "options:")
 	fmt.Fprintln(w, "  --kid              key id")
-	fmt.Fprintln(w, "  --payload-encoding payload encoding: JCS or raw (default: JCS)")
+	fmt.Fprintln(w, "  --payload-encoding payload encoding: jcs or raw (default: jcs)")
 	fmt.Fprintln(w, "  --output           output file path (default: stdout)")
 }
 
@@ -69,6 +69,7 @@ func printTSUsage(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "subcommands:")
 	fmt.Fprintln(w, "  init   Start a new timeseries session and print an Envelope v1 JSON template.")
+	fmt.Fprintln(w, "  next   Generate next timeseries envelope template from a previous signed envelope.")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "run 'veriseal ts <subcommand> -h' for subcommand-specific options")
 }
@@ -78,6 +79,14 @@ func printTSInitUsage(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "options:")
 	fmt.Fprintln(w, "  --kid              key id")
-	fmt.Fprintln(w, "  --payload-encoding payload encoding: JCS or raw (default: JCS)")
+	fmt.Fprintln(w, "  --payload-encoding payload encoding: jcs or raw (default: jcs)")
 	fmt.Fprintln(w, "  --output           output file path (default: stdout)")
+}
+
+func printTSNextUsage(w io.Writer) {
+	fmt.Fprintln(w, "usage: veriseal ts next [options]")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "options:")
+	fmt.Fprintln(w, "  --prev     input signed envelope JSON file (previous)")
+	fmt.Fprintln(w, "  --output   output file path (default: stdout)")
 }

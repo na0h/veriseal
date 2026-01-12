@@ -26,7 +26,7 @@ VeriSeal は「データそのもの」ではなく、データが改ざんさ�
   "v": 1,
   "alg": "Ed25519",
   "kid": "demo-1",
-  "payload_encoding": "JCS",
+  "payload_encoding": "jcs",
   "payload_hash_alg": "SHA-256"
 }
 ```
@@ -38,7 +38,7 @@ VeriSeal は「データそのもの」ではなく、データが改ざんさ�
   "v": 1,
   "alg": "Ed25519",
   "kid": "demo-1",
-  "payload_encoding": "JCS",
+  "payload_encoding": "jcs",
   "payload_hash_alg": "SHA-256",
   "payload_hash": "BASE64...",
   "sig": "BASE64..."
@@ -96,7 +96,7 @@ VeriSeal は「データそのもの」ではなく、データが改ざんさ�
 
 ## payload_encoding（v1）
 
-### `JCS`
+### `jcs`
 
 - payload は JSON
 - JSON のキー順や空白差分は影響しない
@@ -121,7 +121,7 @@ VeriSeal は「データそのもの」ではなく、データが改ざんさ�
 - Envelope v1 の JSON テンプレートを出力します。
 
 ```sh
-veriseal init --kid demo-1 --payload-encoding JCS --output envelope.template.json
+veriseal init --kid demo-1 --payload-encoding jcs --output envelope.template.json
 ```
 
 ```json
@@ -129,7 +129,7 @@ veriseal init --kid demo-1 --payload-encoding JCS --output envelope.template.jso
   "v": 1,
   "alg": "Ed25519",
   "kid": "demo-1",
-  "payload_encoding": "JCS",
+  "payload_encoding": "jcs",
   "payload_hash_alg": "SHA-256"
 }
 ```
@@ -184,7 +184,7 @@ Timeseries は、Envelope の連続性（欠落・並び替え・分岐）を検
 ```sh
 veriseal ts init \
   --kid demo-1 \
-  --payload-encoding JCS \
+  --payload-encoding jcs \
   --output envelope.template.json
 ```
 
