@@ -121,7 +121,10 @@ VeriSeal は「データそのもの」ではなく、データが改ざんさ�
 - Envelope v1 の JSON テンプレートを出力します。
 
 ```sh
-veriseal init --kid demo-1 --payload-encoding jcs --output envelope.template.json
+go run ./cmd/veriseal init \
+  --kid demo-1 \
+  --payload-encoding jcs \
+  --output envelope.template.json
 ```
 
 ```json
@@ -139,7 +142,7 @@ veriseal init --kid demo-1 --payload-encoding jcs --output envelope.template.jso
 - payload を読み込み、Envelope に署名します。
 
 ```sh
-veriseal sign \
+go run ./cmd/veriseal sign \
   --privkey privkey.pem \
   --input envelope.template.json \
   --payload-file payload.json \
@@ -149,7 +152,7 @@ veriseal sign \
 - `iat`: 著名発行日時（UNIX時間）をつける場合は、`--set-iat`を指定します。
 
 ```sh
-veriseal sign \
+go run ./cmd/veriseal sign \
   --privkey privkey.pem \
   --input envelope.template.json \
   --payload-file payload.json \
@@ -163,11 +166,11 @@ veriseal sign \
 - 署名検証を行います。payload を指定した場合は payload_hash も検証します。
 
 ```sh
-veriseal verify \
+go run ./cmd/veriseal verify \
   --pubkey pubkey.pem \
   --input envelope.signed.json
 
-veriseal verify \
+go run ./cmd/veriseal verify \
   --pubkey pubkey.pem \
   --input envelope.signed.json \
   --payload-file payload.json
@@ -182,7 +185,7 @@ Timeseries は、Envelope の連続性（欠落・並び替え・分岐）を検
 - 新しい timeseries セッションを開始します。
 
 ```sh
-veriseal ts init \
+go run ./cmd/veriseal ts init \
   --kid demo-1 \
   --payload-encoding jcs \
   --output envelope.template.json
@@ -198,7 +201,7 @@ veriseal ts init \
 - 直前の署名済み Envelope を元に、次の Envelope テンプレートを生成します。
 
 ```sh
-veriseal ts next \
+go run ./cmd/veriseal ts next \
   --prev envelope.prev.signed.json \
   --output envelope.template.json
 ```
@@ -214,7 +217,7 @@ veriseal ts next \
 - 主に ingest 時の即時チェック用途を想定しています。
 
 ```sh
-veriseal ts check \
+go run ./cmd/veriseal ts check \
   --prev prev.signed.json \
   --current current.signed.json
 ```
@@ -225,7 +228,7 @@ veriseal ts check \
 - 署名検証や payload 検証は行いません。
 
 ```sh
-veriseal ts audit \
+go run ./cmd/veriseal ts audit \
   --input envelopes.jsonl
 ```
 
