@@ -13,8 +13,10 @@ import (
 )
 
 type verifyResult struct {
+	OK             bool   `json:"ok"`
 	SignatureOK    bool   `json:"signature_ok"`
 	PayloadHashOK  *bool  `json:"payload_hash_ok,omitempty"`
+	Error          string `json:"error,omitempty"`
 	SignatureError string `json:"signature_error,omitempty"`
 	PayloadError   string `json:"payload_error,omitempty"`
 }
@@ -26,7 +28,7 @@ func runVerify(args []string) error {
 	pubPath := fs.String("pubkey", "", "path to ed25519 public key")
 	inPath := fs.String("input", "", "input signed envelope JSON file path")
 	payloadFile := fs.String("payload-file", "", "payload file path (optional)")
-	jsonOut := fs.Bool("json", false, "print result as JSON")
+	jsonOut := fs.Bool("json", false, "output result as JSON (for CI / automation)")
 
 	if err := parseFlags(fs, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -87,12 +89,29 @@ func runVerify(args []string) error {
 		res.SignatureOK = true
 	}
 
+	// Overall result
+	res.OK = res.SignatureOK && (res.PayloadHashOK == nil || *res.PayloadHashOK)
+	if !res.OK {
+		// Choose a primary error message for automation.
+		if !res.SignatureOK {
+			res.Error = res.SignatureError
+		} else if res.PayloadHashOK != nil && !*res.PayloadHashOK {
+			res.Error = res.PayloadError
+		}
+		if res.Error == "" {
+			res.Error = "verification failed"
+		}
+	}
+
 	if *jsonOut {
-		b, err := json.MarshalIndent(res, "", "  ")
-		if err != nil {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetEscapeHTML(false)
+		if err := enc.Encode(res); err != nil {
 			return err
 		}
-		fmt.Fprintln(os.Stdout, string(b))
+		if !res.OK {
+			return errors.New(res.Error)
+		}
 		return nil
 	}
 
@@ -118,5 +137,8 @@ func runVerify(args []string) error {
 		}
 	}
 
+	if !res.OK {
+		return errors.New(res.Error)
+	}
 	return nil
 }

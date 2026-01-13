@@ -9,9 +9,28 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/na0h/veriseal/core"
 )
+
+type tsAuditResult struct {
+	OK    bool   `json:"ok"`
+	Error string `json:"error,omitempty"`
+	Index *int   `json:"index,omitempty"`
+}
+
+func parseAuditIndex(msg string) *int {
+	const prefix = "index "
+	if !strings.HasPrefix(msg, prefix) {
+		return nil
+	}
+	var n int
+	if _, err := fmt.Sscanf(msg, "index %d:", &n); err == nil {
+		return &n
+	}
+	return nil
+}
 
 func runTSAudit(args []string) error {
 	fs := flag.NewFlagSet("ts audit", flag.ContinueOnError)
@@ -19,6 +38,7 @@ func runTSAudit(args []string) error {
 
 	inPath := fs.String("input", "", "input JSONL file (signed envelopes)")
 	strictStart := fs.Bool("strict-start", false, "require ts_seq=0 and empty ts_prev on the first line")
+	jsonOut := fs.Bool("json", false, "output result as JSON")
 
 	if err := parseFlags(fs, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -65,10 +85,23 @@ func runTSAudit(args []string) error {
 		return err
 	}
 
-	if err := core.AuditTimeseriesV1(envs, *strictStart); err != nil {
+	err := core.AuditTimeseriesV1(envs, *strictStart)
+
+	if *jsonOut {
+		res := tsAuditResult{OK: err == nil}
+		if err != nil {
+			res.Error = err.Error()
+			res.Index = parseAuditIndex(res.Error)
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetEscapeHTML(false)
+		_ = enc.Encode(res)
 		return err
 	}
 
+	if err != nil {
+		return err
+	}
 	fmt.Fprintln(os.Stdout, "OK")
 	return nil
 }

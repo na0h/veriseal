@@ -98,6 +98,7 @@ func printTSCheckUsage(w io.Writer) {
 	fmt.Fprintln(w, "options:")
 	fmt.Fprintln(w, "  --prev    previous signed envelope JSON file")
 	fmt.Fprintln(w, "  --curr    current signed envelope JSON file")
+	fmt.Fprintln(w, "  --json    output result as JSON")
 }
 
 func printTSAuditUsage(w io.Writer) {
@@ -106,4 +107,5 @@ func printTSAuditUsage(w io.Writer) {
 	fmt.Fprintln(w, "options:")
 	fmt.Fprintln(w, "  --input    input JSONL file (signed envelopes)")
 	fmt.Fprintln(w, "  --strict-start  require ts_seq=0 and empty ts_prev on the first line")
+	fmt.Fprintln(w, "  --json    output result as JSON")
 }

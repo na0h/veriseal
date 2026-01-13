@@ -11,12 +11,18 @@ import (
 	"github.com/na0h/veriseal/core"
 )
 
+type tsCheckResult struct {
+	OK    bool   `json:"ok"`
+	Error string `json:"error,omitempty"`
+}
+
 func runTSCheck(args []string) error {
 	fs := flag.NewFlagSet("ts check", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
 	prevPath := fs.String("prev", "", "previous signed envelope JSON file")
 	currPath := fs.String("curr", "", "current signed envelope JSON file")
+	jsonOut := fs.Bool("json", false, "output result as JSON")
 
 	if err := parseFlags(fs, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -50,10 +56,22 @@ func runTSCheck(args []string) error {
 		return err
 	}
 
-	if err := core.CheckTimeseriesLinkV1(prev, curr); err != nil {
+	err = core.CheckTimeseriesLinkV1(prev, curr)
+
+	if *jsonOut {
+		res := tsCheckResult{OK: err == nil}
+		if err != nil {
+			res.Error = err.Error()
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetEscapeHTML(false)
+		_ = enc.Encode(res)
 		return err
 	}
 
+	if err != nil {
+		return err
+	}
 	fmt.Fprintln(os.Stdout, "OK")
 	return nil
 }
