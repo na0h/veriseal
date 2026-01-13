@@ -12,40 +12,43 @@ Apache License 2.0
 
 ## Concept
 
-VeriSeal does not handle the data itself. Instead, it handles **metadata that enables verification that data has not been tampered with**.
+VeriSeal does not handle the data itself.
+It handles metadata that enables verification that the data has not been tampered with.
 
-- An Envelope contains only a hash of the payload and a signature
-- The payload itself is provided **externally at verification time**
+- An Envelope stores only the payload hash and the signature
+- The payload is provided externally at verification time
 
 ---
 
 ## Envelope v1
 
-**Unsigned template**
+### Unsigned Template
+
 ```json
 {
   "v": 1,
   "alg": "Ed25519",
   "kid": "demo-1",
-  "payload_encoding": "JCS",
+  "payload_encoding": "jcs",
   "payload_hash_alg": "SHA-256"
 }
 ```
 
-**Signed envelope**
+### Signed Envelope
+
 ```json
 {
   "v": 1,
   "alg": "Ed25519",
   "kid": "demo-1",
-  "payload_encoding": "JCS",
+  "payload_encoding": "jcs",
   "payload_hash_alg": "SHA-256",
   "payload_hash": "BASE64...",
   "sig": "BASE64..."
 }
 ```
 
-### Fields
+### Field Description
 
 - `v`
   - Envelope version (fixed to v1)
@@ -58,12 +61,11 @@ VeriSeal does not handle the data itself. Instead, it handles **metadata that en
   - Key identifier (Key ID)
 
 - `iat`
-  - Issued At (UNIX time, seconds)
+  - Issued-at time (UNIX timestamp)
   - Optional
-  - Included in the signature when present
 
 - `payload_encoding`
-  - Normalization method applied to the payload
+  - Payload normalization method
 
 - `payload_hash_alg`
   - Payload hash algorithm
@@ -75,19 +77,37 @@ VeriSeal does not handle the data itself. Instead, it handles **metadata that en
 - `sig`
   - Signature value (Base64)
 
+### Timeseries (Optional)
+
+- `ts_session_id`
+  - Identifier representing a continuity session (UUID)
+  - Optional
+
+- `ts_seq`
+  - Sequence number within a `ts_session_id`
+  - Non-negative integer (recommended: uint64)
+  - Must monotonically increase within the session
+  - An error should be raised if continuation is not possible due to overflow
+  - If `ts_seq = 0`, `ts_prev` must not exist
+
+- `ts_prev`
+  - Base64-encoded SHA-256 hash of the previous Envelope JSON with the `sig` field excluded
+  - Optional
+  - Required when `ts_seq > 0`
+
 ---
 
 ## payload_encoding (v1)
 
-### `JCS`
+### jcs
 
 - Payload must be JSON
 - JSON key order and whitespace differences do not affect the hash
 
-### `raw`
+### raw
 
 - Payload is treated as arbitrary bytes
-- Character encoding changes, newline conversions, or recompression must not be performed
+- Character encoding changes, newline normalization, recompression, etc. must not be performed
 
 ---
 
@@ -102,10 +122,13 @@ Verification of `payload_hash` and verification of the signature are independent
 
 ### init
 
-Prints an **Envelope v1 JSON template**.
+Outputs an Envelope v1 JSON template.
 
 ```sh
-veriseal init --kid demo-1 --payload-encoding JCS --output envelope.template.json
+go run ./cmd/veriseal init \
+  --kid demo-1 \
+  --payload-encoding jcs \
+  --output envelope.template.json
 ```
 
 ```json
@@ -113,7 +136,7 @@ veriseal init --kid demo-1 --payload-encoding JCS --output envelope.template.jso
   "v": 1,
   "alg": "Ed25519",
   "kid": "demo-1",
-  "payload_encoding": "JCS",
+  "payload_encoding": "jcs",
   "payload_hash_alg": "SHA-256"
 }
 ```
@@ -123,17 +146,17 @@ veriseal init --kid demo-1 --payload-encoding JCS --output envelope.template.jso
 Reads a payload and signs an Envelope.
 
 ```sh
-veriseal sign \
+go run ./cmd/veriseal sign \
   --privkey privkey.pem \
   --input envelope.template.json \
   --payload-file payload.json \
   --output envelope.signed.json
 ```
 
-To attach an issuance timestamp (`iat`, UNIX time), specify `--set-iat`.
+To attach an issued-at timestamp (`iat`, UNIX time), specify `--set-iat`.
 
 ```sh
-veriseal sign \
+go run ./cmd/veriseal sign \
   --privkey privkey.pem \
   --input envelope.template.json \
   --payload-file payload.json \
@@ -141,23 +164,86 @@ veriseal sign \
   --set-iat
 ```
 
-If the input already contains `iat`, it will be overwritten and a warning will be printed.
-```
-
 ### verify
 
-Verifies a signature. If a payload is provided, `payload_hash` is also verified.
+Verifies the signature.
+If a payload is provided, `payload_hash` is also verified.
 
 ```sh
-veriseal verify \
+go run ./cmd/veriseal verify \
   --pubkey pubkey.pem \
   --input envelope.signed.json
 
-veriseal verify \
+go run ./cmd/veriseal verify \
   --pubkey pubkey.pem \
   --input envelope.signed.json \
   --payload-file payload.json
 ```
+
+---
+
+## Timeseries
+
+Timeseries provides auxiliary commands to verify Envelope continuity
+(missing entries, reordering, branching).
+
+### ts init
+
+Starts a new timeseries session.
+
+```sh
+go run ./cmd/veriseal ts init \
+  --kid demo-1 \
+  --payload-encoding jcs \
+  --output envelope.template.json
+```
+
+- Generates a new `ts_session_id`
+- Sets `ts_seq = 0`
+- Does not set `ts_prev`
+- Outputs an unsigned Envelope template
+
+### ts next
+
+Generates the next Envelope template based on the previous signed Envelope.
+
+```sh
+go run ./cmd/veriseal ts next \
+  --prev envelope.prev.signed.json \
+  --output envelope.template.json
+```
+
+- `ts_session_id` is inherited from the previous Envelope
+- `ts_seq = prev.ts_seq + 1`
+- `ts_prev` is calculated as the Base64-encoded SHA-256 hash of the previous unsigned Envelope
+- Outputs an unsigned Envelope template
+
+### ts check
+
+Checks continuity between two Envelopes.
+Intended mainly for immediate checks during ingestion.
+
+```sh
+go run ./cmd/veriseal ts check \
+  --prev prev.signed.json \
+  --current current.signed.json
+```
+
+### ts audit
+
+Verifies continuity across multiple Envelopes.
+Does not perform signature or payload verification.
+
+```sh
+go run ./cmd/veriseal ts audit \
+  --input envelopes.jsonl
+```
+
+Checks:
+
+- `ts_session_id` is consistent
+- `ts_seq` monotonically increases from 0
+- `ts_prev` matches the previous Envelope
 
 ---
 
@@ -178,5 +264,3 @@ openssl pkey \
   -pubout \
   -out pubkey.pem
 ```
-
----

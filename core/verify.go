@@ -19,7 +19,7 @@ func NormalizePayloadBytes(payload []byte, payloadEncoding string) ([]byte, erro
 	case V1PayloadEncodingJCS:
 		b, err := canonical.Canonicalize(payload)
 		if err != nil {
-			return nil, fmt.Errorf("payload_encoding=JCS but payload is not valid JSON")
+			return nil, fmt.Errorf("payload_encoding=jcs but payload is not valid JSON")
 		}
 		return b, nil
 	default:
