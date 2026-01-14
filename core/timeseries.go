@@ -6,8 +6,36 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/na0h/veriseal/canonical"
 )
+
+func newUUIDv4() (string, error) {
+	u, err := uuid.NewRandom()
+	if err != nil {
+		return "", err
+	}
+	return u.String(), nil
+}
+
+var newUUIDv4Func = newUUIDv4
+
+func NewTimeseriesEnvelopeTemplateV1(kid string, payloadEncoding string) (Envelope, error) {
+	env, err := NewEnvelopeTemplateV1(kid, payloadEncoding)
+	if err != nil {
+		return Envelope{}, err
+	}
+
+	sid, err := newUUIDv4Func()
+	if err != nil {
+		return Envelope{}, err
+	}
+	seq := uint64(0)
+	env.TsSessionID = &sid
+
+	env.TsSeq = &seq
+	return env, nil
+}
 
 func UnsignedHashV1(env Envelope) (string, error) {
 	unsigned := env
