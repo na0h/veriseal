@@ -29,6 +29,10 @@ func baseEnvelopeRaw() Envelope {
 	}
 }
 
+// -----------------------------------------------------------------------------
+// V1: Sign / Verify
+// -----------------------------------------------------------------------------
+
 func TestV1_SignVerify_OK(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -166,6 +170,10 @@ func TestV1_Verify_RawVsJCS_Mismatch_Fail(t *testing.T) {
 	}
 }
 
+// -----------------------------------------------------------------------------
+// V1: Validation
+// -----------------------------------------------------------------------------
+
 func TestV1_Validate_VersionInvalid_Fail(t *testing.T) {
 	_, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -298,6 +306,10 @@ func TestV1_SignVerify_WithIatInInput_OK(t *testing.T) {
 	}
 }
 
+// -----------------------------------------------------------------------------
+// V1: iat (Issued At)
+// -----------------------------------------------------------------------------
+
 func TestV1_SignVerify_SetIat_OverwritesAndVerifies_OK(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -374,6 +386,10 @@ func TestV1_Verify_IatTampered_Fails(t *testing.T) {
 		t.Fatalf("want verify failure after tampering iat, got nil")
 	}
 }
+
+// -----------------------------------------------------------------------------
+// V1: Timeseries
+// -----------------------------------------------------------------------------
 
 func TestV1_NewTimeseriesEnvelopeTemplateV1_OK(t *testing.T) {
 	env, err := NewTimeseriesEnvelopeTemplateV1("demo-1", V1PayloadEncodingJCS)
