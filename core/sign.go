@@ -9,6 +9,8 @@ import (
 	"github.com/na0h/veriseal/canonical"
 )
 
+var nowUnix = func() int64 { return time.Now().Unix() }
+
 func SignEd25519(envelope Envelope, payloadBytes []byte, priv ed25519.PrivateKey, setIat bool) (Envelope, error) {
 	if err := ValidateEnvelopeV1(envelope); err != nil {
 		return Envelope{}, err
@@ -24,7 +26,7 @@ func SignEd25519(envelope Envelope, payloadBytes []byte, priv ed25519.PrivateKey
 	unsigned.Sig = nil
 
 	if setIat {
-		iat := time.Now().Unix()
+		iat := nowUnix()
 		unsigned.Iat = &iat
 	}
 

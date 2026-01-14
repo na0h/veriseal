@@ -8,6 +8,7 @@
     "PKCS",
     "privkey",
     "testdata",
+    "testutil",
     "VeriSeal"
   ],
   "ignoreWords": [],

@@ -1,0 +1,10 @@
+{
+  "v": 1,
+  "alg": "ed25519",
+  "kid": "test-kid",
+  "iat": 1700000000,
+  "payload_encoding": "jcs",
+  "payload_hash_alg": "sha256",
+  "payload_hash": "MrdpmCo6bi3xIFMLBty68ej3XgBM7qkqw+kb16JI1yg=",
+  "sig": "3bd6HAkQEeuRbyPkVz9rBLWvRIm06vLTtKqdvDeXuSM+XPni7TO4zjR0Hk0OicwFdJVOR/vpSynt+DqTfMqlCQ=="
+}
