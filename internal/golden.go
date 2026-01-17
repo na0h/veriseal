@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-var Update = flag.Bool("update", false, "update golden files") // go test ./... -update
+var Update = flag.Bool("update", false, "update golden files")
 
 func DiffOrUpdate(t *testing.T, path string, got []byte) {
 	t.Helper()
@@ -27,10 +27,6 @@ func DiffOrUpdate(t *testing.T, path string, got []byte) {
 	if err != nil {
 		t.Fatalf("read golden: %v", err)
 	}
-
-	// “改行だけ”で落ちるのが鬱陶しいなら TrimSpace。完全バイト一致にしたいなら外す。
-	want = bytes.TrimSpace(want)
-	got = bytes.TrimSpace(got)
 
 	if !bytes.Equal(want, got) {
 		t.Fatalf("golden mismatch: %s\n---want---\n%s\n---got---\n%s\n", path, want, got)
